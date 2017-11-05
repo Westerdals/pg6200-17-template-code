@@ -3,16 +3,17 @@
 
 #include "GLUtils/GLUtils.hpp"
 
-class ShadowFBO {
+class ScreenshotFBO
+{
 public:
-	ShadowFBO(unsigned int width, unsigned int height);
-	~ShadowFBO();
-
+	ScreenshotFBO();
+	ScreenshotFBO(unsigned int width, unsigned int height);
+	~ScreenshotFBO();
 	void bind();
 	static void unbind();
 
-	unsigned int getWidth() {return width; }
-	unsigned int getHeight() {return height; }
+	unsigned int getWidth() { return width; }
+	unsigned int getHeight() { return height; }
 
 	GLuint getTexture() { return texture; }
 
@@ -22,5 +23,4 @@ private:
 	GLuint texture;
 	unsigned int width, height;
 };
-
 #endif

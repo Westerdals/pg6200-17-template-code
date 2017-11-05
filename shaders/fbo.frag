@@ -1,13 +1,12 @@
 #version 150
 
-uniform sampler2D fbo_texture;
+uniform sampler2D texture;
 
-in vec2 ex_texcoord;
+in vec2 tex_coord;
 
-out vec4 out_color;
+out vec4 res_colour;
 
 void main(){
-	vec3 color = vec3(texture2D(fbo_texture, ex_texcoord.xy).rrr);
-	out_color = vec4(color, 1.0f);
-	out_color.a = 0.8f;
+	vec4 colour = texture2D(texture, tex_coord.xy);
+	res_colour = vec4(colour.xyz, 0.8f);
 }

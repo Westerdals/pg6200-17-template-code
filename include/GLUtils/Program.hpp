@@ -1,76 +1,33 @@
 #ifndef _PROGRAM_HPP__
 #define _PROGRAM_HPP__
 
+#include "GameException.h"
+
 #include <string>
 #include <sstream>
 #include <vector>
-#include <iomanip>
 
 #include <GL/glew.h>
 
 namespace GLUtils {
 
-	
-inline std::string readFile(std::string file) {
-	int length;
-	std::string buffer;
-	std::string contents;
-
-	std::ifstream is;
-	is.open(file.c_str());
-
-	if (!is.good()) {
-		std::string err = "Could not open ";
-		err.append(file);
-		throw std::runtime_error(err);
-	}
-
-	// get length of file:
-	is.seekg(0, std::ios::end);
-	length = static_cast<int>(is.tellg());
-	is.seekg(0, std::ios::beg);
-
-	// reserve memory:
-	contents.reserve(length);
-
-	// read data
-	while(getline(is,buffer)) {
-		contents.append(buffer);
-		contents.append("\n");
-	}
-	is.close();
-
-	return contents;
-}
-
-
-
 class Program {
 public:
 	Program(std::string vs, std::string fs) {
 		name = glCreateProgram();
+		attachShader(vs, GL_VERTEX_SHADER);
 
-		std::string vs_src = readFile(vs);
-		std::string fs_src = readFile(fs);
-
-		attachShader(vs_src, GL_VERTEX_SHADER);
-		attachShader(fs_src, GL_FRAGMENT_SHADER);
+		attachShader(fs, GL_FRAGMENT_SHADER);
 		link();
 	}
 
 	Program(std::string vs, std::string gs, std::string fs) {
 		name = glCreateProgram();
-		std::string vs_src = readFile(vs);
-		std::string gs_src = readFile(gs);
-		std::string fs_src = readFile(fs);
-		
-		attachShader(vs_src, GL_VERTEX_SHADER);
-		attachShader(gs_src, GL_GEOMETRY_SHADER);
-		attachShader(fs_src, GL_FRAGMENT_SHADER);
+		attachShader(vs, GL_VERTEX_SHADER);
+		attachShader(gs, GL_GEOMETRY_SHADER);
+		attachShader(fs, GL_FRAGMENT_SHADER);
 		link();
 	}
-
-	GLuint name; //< OpenGL shader program
 
 	inline void use() {
 		glUseProgram(name);
@@ -92,6 +49,8 @@ public:
 		glVertexAttribPointer(loc, size, type, normalized, stride, pointer);
 		glEnableVertexAttribArray(loc);
 	}
+
+	GLuint name; //< OpenGL shader program
 
 private:
 	void link() {
@@ -115,7 +74,7 @@ private:
 			} else {
 				log << "--- empty log message ---" << std::endl;
 			}
-			throw std::runtime_error(log.str());
+			THROW_EXCEPTION(log.str());
 		}
 	}
 
@@ -125,7 +84,7 @@ private:
 		GLuint s = glCreateShader(type);
 		if (s == 0) {
 			log << "Failed to create shader of type " << type << std::endl;
-			throw std::runtime_error(log.str());
+			THROW_EXCEPTION(log.str());
 		}
 
 		// set source code and compile
@@ -140,25 +99,21 @@ private:
 			// compilation failed
 			log << "Compilation failed!" << std::endl;
 			log << "--- source code ---" << std::endl;
-			std::istringstream src_ss(src);
-			std::string line;
-			unsigned int i=0;
-			while (std::getline(src_ss, line))
-				log << std::setw(4) << std::setfill('0') << ++i << line << std::endl;
+			log << src << std::endl;
 
 			GLint logsize;
 			glGetShaderiv(s, GL_INFO_LOG_LENGTH, &logsize);
+
 			if (logsize > 0) {
 				std::vector<GLchar> infolog(logsize + 1);
 				glGetShaderInfoLog(s, logsize, NULL, &infolog[0]);
 
 				log << "--- error log ---" << std::endl;
 				log << std::string(infolog.begin(), infolog.end()) << std::endl;
-			}
-			else {
+			} else {
 				log << "--- empty log message ---" << std::endl;
 			}
-			throw std::runtime_error(log.str());
+			THROW_EXCEPTION(log.str());
 		}
 		
 		glAttachShader(name, s);

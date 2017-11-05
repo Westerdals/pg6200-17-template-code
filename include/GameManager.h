@@ -1,12 +1,8 @@
 #ifndef _GAMEMANAGER_H_
 #define _GAMEMANAGER_H_
 
-#ifdef _WIN32
-#define NOMINMAX
-#include <Windows.h>
-#endif
-
 #include <memory>
+#include <map>
 
 #include <GL/glew.h>
 #include <SDL.h>
@@ -14,10 +10,10 @@
 
 #include "Timer.h"
 #include "GLUtils/GLUtils.hpp"
+#include "GLUtils/CubeMap.hpp"
 #include "Model.h"
 #include "VirtualTrackball.h"
-#include "ShadowFBO.h"
-
+#include "ScreenshotFBO.h"
 
 /**
  * This class handles the game logic and display.
@@ -58,80 +54,103 @@ public:
 	 */
 	void render();
 
-	/**
-	  * Function that renders a shadow pass
-	  */
-	void renderShadowPass();
-
-	/**
-	  * Function that renders to screen
-	  */
-	void renderColorPass();
-
-	/**
-	  *	Function that renders the shadowmap fbo onto a section of the screen
-	  */
-
-	void renderFBO();
-
 protected:
 	/**
 	 * Creates the OpenGL context using SDL
 	 */
 	void createOpenGLContext();
 
+	/*
+	*
+	*/
+	void initSDL();
+
+	/**
+	 * Sets states for OpenGL that we want to keep persistent
+	 * throughout the game
+	 */
+	void setOpenGLStates();
+
+	/**
+	 * Creates the matrices for the OpenGL transformations,
+	 * perspective, etc.
+	 */
+	void createMatrices();
+
+	/**
+	 * Compiles, attaches, links, and sets uniforms for
+	 * a simple OpenGL program
+	 */
+	void createSimpleProgram();
+
+	/**
+	 * Creates vertex array objects
+	 */
+	void createVAO();
+
 	static const unsigned int window_width = 800;
 	static const unsigned int window_height = 600;
-	
-	static const unsigned int shadow_map_width = 1024;
-	static const unsigned int shadow_map_height = 1024;
 
-	static const unsigned int n_models = 20;
-
-	static const float near_plane;
-	static const float far_plane;
-	static const float fovy;
-	static const float cube_scale;
-	
 	static const float cube_vertices_data[];
 	static const float cube_normals_data[];
 
+	float near_plane;
+	float far_plane;
+	float fovy;
+
+	bool showDebugView;
+
+	int screenshot_number;
+
 private:
+	enum RenderMode {
+		RENDERMODE_PHONG,
+		RENDERMODE_WIREFRAME,
+		RENDERMODE_HIDDEN_LINE,
+		RENDERMODE_FLAT,
+	};
+
 	void zoomIn();
 	void zoomOut();
+	void GameManager::initDebugView();
+	void GameManager::renderDebugView();
 
-	/**
-	*	A member function pointer that will point to either phong_rendering, wireframe_rendering and hiddenline_rendering depending on which rendering mode the user is using.
-	*	The reason for doing this is so we don't have to make an ugly switch/case statement in our renderColorPass() function implementation.
-	*/
-	void (GameManager::*render_model)(const GLfloat * modelviewprojection, const GLfloat * modelview_inverse, const GLfloat * light_transform, const GLfloat * light_pos, int iteration);
+	void (GameManager::*render_model)(); // TODO
+	static void renderMeshRecursive(MeshPart& mesh, const std::shared_ptr<GLUtils::Program>& program, const glm::mat4& modelview, const glm::mat4& transform, 
+		glm::mat4& projection_matrix, glm::vec3(light_pos));
+	void GameManager::renderCubeMap(glm::mat4 view);
 
-	void phong_rendering(const GLfloat * modelviewprojection, const GLfloat * modelview_inverse, const GLfloat * light_transform, const GLfloat * light_pos, int iteration);
-	void wireframe_rendering(const GLfloat * modelviewprojection, const GLfloat * modelview_inverse, const GLfloat * light_transform, const GLfloat * light_pos, int iteration);
-	void hiddenline_rendering(const GLfloat * modelviewprojection, const GLfloat * modelview_inverse, const GLfloat * light_transform, const GLfloat * light_pos, int iteration);
+	void GameManager::screenshot();
 
-	void init_fbo();
+	SDL_Window* main_window; //< Our window handle
+	SDL_GLContext main_context; //< Our opengl context handle 
+	RenderMode render_mode; //< The current method of rendering
 
+	// vao arrays like this is handy for one "scene"
+	GLuint main_scene_vao[2]; //< number of different "collection" of vbo's we have
+	// Different scenes can be structured with different vaos
+	GLuint debugview_vao;
 
-	GLuint fbo_vao;
+	std::map<std::string, std::shared_ptr<Model>> models;
+	std::map<std::string, std::shared_ptr<GLUtils::Program>> shaders;
 
-	GLuint fbo_vertex_bo;
-
-	bool m_display_shadow_map;
-	
-	GLuint vao[2]; //< Vertex array objects
-	std::shared_ptr<GLUtils::Program> phong_program, wireframe_program, exploded_view_program, shadow_program, hiddenline_program, fbo_program; // exploded_view_program is not in use
 	std::shared_ptr<GLUtils::CubeMap> diffuse_cubemap;
-	std::shared_ptr<GLUtils::BO<GL_ARRAY_BUFFER> > cube_vertices, cube_normals;
+	std::shared_ptr<GLUtils::VBO<GL_ARRAY_BUFFER> > cube_vertices, cube_normals;
 
-	std::shared_ptr<Model> model;
-	std::shared_ptr<ShadowFBO> shadow_fbo;
+	// we make the quad vbo without help from program.hpp
+	// this is just like the code for triangle primitives in lab_01_solution
+	// and that you will find inside program.hpp now
+	GLuint debugview;
 
-	Timer my_timer; //< Timer for machine independent motion
-	float zoom; //< Zoom factor
+	// FBO screenshot
+	std::shared_ptr<ScreenshotFBO> screenshot_fbo;
+
+	float zoom;
+	Timer fps_timer;
+	VirtualTrackball cam_trackball;
 
 	struct {
-		glm::vec3 position; //< Light position for shading etc
+		glm::vec3 position;
 		glm::mat4 projection;
 		glm::mat4 view;
 	} light;
@@ -141,14 +160,9 @@ private:
 		glm::mat4 view;
 	} camera;
 
-	std::vector<glm::mat4> model_matrices; //< OpenGL model transformation matrix
-	std::vector<glm::vec3> model_colors;
-
-	SDL_Window* main_window; //< Our window handle
-	SDL_GLContext main_context; //< Our opengl context handle 
-	
-	VirtualTrackball cam_trackball;
-
+	std::shared_ptr<Model> model;
+	std::shared_ptr<GLUtils::Program> program, cube_program, debugview_program;
+	glm::mat4 model_matrix; // TODO should be in a struct with the model mesh
 };
 
 #endif // _GAMEMANAGER_H_

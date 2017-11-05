@@ -11,37 +11,42 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\GameException.h" />
     <ClInclude Include="include\GameManager.h" />
-    <ClInclude Include="include\GLUtils\BO.hpp" />
-    <ClInclude Include="include\GLUtils\CubeMap.hpp" />
+    <ClInclude Include="include\GeometryManager.h" />
     <ClInclude Include="include\GLUtils\GLUtils.hpp" />
     <ClInclude Include="include\GLUtils\Program.hpp" />
+    <ClInclude Include="include\GLUtils\VBO.hpp" />
+    <ClInclude Include="include\GLUtils\CubeMap.hpp" />
     <ClInclude Include="include\Model.h" />
-    <ClInclude Include="include\ShadowFBO.h" />
+    <ClInclude Include="include\ScreenshotFBO.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="include\Timer.h" />
-    <ClInclude Include="include\VirtualTrackball.h" />
+    <ClInclude Include="VirtualTrackball.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\GameManager.cpp" />
+    <ClCompile Include="src\GeometryManager.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\Model.cpp" />
-    <ClCompile Include="src\ShadowFBO.cpp" />
+    <ClCompile Include="src\ScreenshotFBO.cpp" >
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="src\VirtualTrackball.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\fbo.frag" />
     <None Include="shaders\fbo.vert" />
-    <None Include="shaders\hiddenline.frag" />
-    <None Include="shaders\hiddenline.geom" />
-    <None Include="shaders\hiddenline.vert" />
-    <None Include="shaders\phong.frag" />
-    <None Include="shaders\phong.geom" />
-    <None Include="shaders\phong.vert" />
-    <None Include="shaders\shadow.frag" />
-    <None Include="shaders\shadow.vert" />
-    <None Include="shaders\wireframe.frag" />
-    <None Include="shaders\wireframe.geom" />
-    <None Include="shaders\wireframe.vert" />
+    <None Include="shaders\basic_phong.frag">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="shaders\basic_phong.vert">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="shaders\cube_map.frag" />
+    <None Include="shaders\cube_map.geom" />
+    <None Include="shaders\cube_map.vert" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{0EB6082A-7B48-4E60-B4B3-2EB3C7254AC1}</ProjectGuid>
@@ -83,7 +88,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>include;$(PG6200_GLEW_INCLUDE_PATH);$(PG6200_ASSIMP_INCLUDE_PATH);$(PG6200_SDL_INCLUDE_PATH);$(PG6200_GLM_INCLUDE_PATH);$(PG6200_DEVIL_INCLUDE_PATH);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>include;$(PG6200_DEVIL_INCLUDE_PATH);$(PG6200_GLEW_INCLUDE_PATH);$(PG6200_ASSIMP_INCLUDE_PATH);$(PG6200_SDL_INCLUDE_PATH);$(PG6200_GLM_INCLUDE_PATH);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -94,8 +99,8 @@
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>DevIL.lib;ILU.lib;assimp.lib;SDL2.lib;SDL2main.lib;opengl32.lib;glu32.lib;glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(PG6200_GLEW_LIB_PATH);$(PG6200_ASSIMP_LIB_PATH);$(PG6200_SDL_LIB_PATH);$(PG6200_DEVIL_LIB_PATH);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>DevIL.lib;ILU.lib;ILUT.lib;assimp.lib;SDL2.lib;SDL2main.lib;opengl32.lib;glu32.lib;glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(PG6200_DEVIL_LIB_PATH);$(PG6200_GLEW_LIB_PATH);$(PG6200_ASSIMP_LIB_PATH);$(PG6200_SDL_LIB_PATH);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <TargetMachine>MachineX86</TargetMachine>
@@ -113,7 +118,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>include;$(PG612_GLEW_INCLUDE_PATH);$(PG612_ASSIMP_INCLUDE_PATH);$(PG612_SDL_INCLUDE_PATH);$(PG612_GLM_INCLUDE_PATH);$(PG612_DEVIL_INCLUDE_PATH);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>include;$(PG6200_GLEW_INCLUDE_PATH);$(PG6200_ASSIMP_INCLUDE_PATH);$(PG6200_SDL_INCLUDE_PATH);$(PG6200_GLM_INCLUDE_PATH);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -121,8 +126,8 @@
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <TargetMachine>MachineX86</TargetMachine>
-      <AdditionalDependencies>DevIL.lib;ILU.lib;assimp.lib;SDL.lib;SDLmain.lib;opengl32.lib;glu32.lib;glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(PG612_GLEW_LIB_PATH);$(PG612_ASSIMP_LIB_PATH);$(PG612_SDL_LIB_PATH);$(PG612_DEVIL_LIB_PATH);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>assimp.lib;SDL.lib;SDLmain.lib;opengl32.lib;glu32.lib;glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalIncludeDirectories>include;$(PG6200_GLEW_INCLUDE_PATH);$(PG6200_ASSIMP_INCLUDE_PATH);$(PG6200_SDL_INCLUDE_PATH);$(PG6200_GLM_INCLUDE_PATH);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
