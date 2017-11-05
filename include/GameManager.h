@@ -117,7 +117,7 @@ private:
 
 	void (GameManager::*render_model)(); // TODO
 	static void renderMeshRecursive(MeshPart& mesh, const std::shared_ptr<GLUtils::Program>& program, const glm::mat4& modelview, const glm::mat4& transform, 
-		glm::mat4& projection_matrix, glm::vec3(light_pos));
+		glm::mat4& projection_matrix, glm::vec3 light_position);
 	void GameManager::renderCubeMap(glm::mat4 view);
 
 	void GameManager::screenshot();

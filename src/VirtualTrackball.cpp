@@ -61,7 +61,7 @@ glm::vec3 VirtualTrackball::getClosestPointOnUnitSphere(int x, int y) {
 	if (r < 0.5) { //Ray hits unit sphere
 		point_on_sphere[0] = 2 * normalized_coords[0];
 		point_on_sphere[1] = 2 * normalized_coords[1];
-		point_on_sphere[2] = sqrt(1 - 4 * r*r);
+		point_on_sphere[2] = sqrtf(1 - 4 * r*r);
 
 		point_on_sphere = glm::normalize(point_on_sphere);
 	}

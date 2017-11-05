@@ -189,6 +189,13 @@ void GameManager::createSimpleProgram() {
 	std::string fs_src = readFile("shaders/basic_phong.frag");
 	std::string vs_src = readFile("shaders/basic_phong.vert");
 
+	program.reset(new Program(vs_src, fs_src));
+
+	//Set uniforms for the program.
+	program->use();
+
+	program->disuse();
+
 	fs_src = readFile("shaders/fbo.frag");
 	vs_src = readFile("shaders/fbo.vert");
 
@@ -210,11 +217,7 @@ void GameManager::createSimpleProgram() {
 	cube_program->disuse();
 
 	//Compile shaders, attach to program object, and link
-	program.reset(new Program(vs_src, gs_src, fs_src));
-	//Set uniforms for the program.
-	program->use();
-
-	program->disuse();
+	// program.reset(new Program(readFile("shaders/basic_phong.vert"), readFile("shaders/basic_phong.frag")));
 }
 
 void GameManager::createVAO() {
@@ -310,31 +313,34 @@ void GameManager::initDebugView(){
 }
 
 void GameManager::renderMeshRecursive(MeshPart& mesh, const std::shared_ptr<Program>& program, 
-		const glm::mat4& view_matrix, const glm::mat4& model_matrix, glm::mat4& projection_matrix, glm::vec3(light_pos)) {
+		const glm::mat4& view_matrix, const glm::mat4& model_matrix, glm::mat4& projection_matrix, glm::vec3 light_position) {
 	//Create modelview matrix
-	glm::mat4 model_mat = model_matrix*mesh.transform;
-	glm::mat4 model_view_mat = view_matrix * model_mat;
-	glm::mat4 model_mat_inverse = glm::inverse(model_mat);
+	glm::mat4 meshpart_model_matrix = model_matrix*mesh.transform;
+	glm::mat4 model_view_mat = view_matrix*meshpart_model_matrix;
+	glm::mat4 model_mat_inverse = glm::inverse(meshpart_model_matrix);
 	glm::mat4 model_view_mat_inverse = glm::inverse(model_view_mat);
-	glm::mat3 normal_mat = glm::transpose(glm::inverse(glm::mat3(model_view_mat)));
-
-	glm::vec3 light_pos_world = glm::mat3(model_mat_inverse) * light_pos / model_mat_inverse[3].w;
-	glm::vec3 camera_pos_world = glm::vec3(model_view_mat_inverse[3] / model_view_mat_inverse[3].w);
-
-	glUniform3fv(program->getUniform("colour"), 1, glm::value_ptr(glm::vec3(1.0f, 0.8f, 0.8f)));
-
-	glUniform3fv(program->getUniform("light_position"), 1, glm::value_ptr(camera_pos_world));
-	glUniform3fv(program->getUniform("camera_position"), 1, glm::value_ptr(camera_pos_world));
-	glUniformMatrix4fv(program->getUniform("mv_mat"), 1, 0, glm::value_ptr(model_view_mat));
-	glUniformMatrix4fv(program->getUniform("proj_mat"), 1, 0, glm::value_ptr(projection_matrix));
-
 	//Create normal matrix, the transpose of the inverse
 	//3x3 leading submatrix of the modelview matrix
-	glUniformMatrix3fv(program->getUniform("normal_mat"), 1, 0, glm::value_ptr(normal_mat));
+	glm::mat3 normal_matrix = glm::transpose(glm::inverse(glm::mat3(model_view_mat)));
+
+	glm::vec3 light_pos = glm::mat3(model_mat_inverse) * light_position / model_mat_inverse[3].w;
+	glm::vec3 camera_pos = glm::vec3(model_view_mat_inverse[3] / model_view_mat_inverse[3].w);
+
+	program->use();
+
+	glUniformMatrix4fv(program->getUniform("model_view_mat"), 1, 0, glm::value_ptr(model_view_mat));
+	glUniformMatrix4fv(program->getUniform("proj_mat"), 1, 0, glm::value_ptr(projection_matrix));
+	glUniformMatrix3fv(program->getUniform("normal_mat"), 1, 0, glm::value_ptr(normal_matrix));
+
+	glUniform3fv(program->getUniform("colour"), 1, glm::value_ptr(glm::vec3(.0f, 1.8f, .8f)));
+	glUniform3fv(program->getUniform("light_position"), 1, glm::value_ptr(light_pos));
+	glUniform3fv(program->getUniform("camera_position"), 1, glm::value_ptr(camera_pos));
 
 	glDrawArrays(GL_TRIANGLES, mesh.first, mesh.count);
 	for (int i=0; i<(int)mesh.children.size(); ++i)
-		renderMeshRecursive(mesh.children.at(i), program, view_matrix, model_mat, projection_matrix, light_pos);
+		renderMeshRecursive(mesh.children.at(i), program, view_matrix, meshpart_model_matrix, projection_matrix, light_position);
+
+	program->disuse();
 }
 
 void GameManager::renderDebugView()
@@ -374,12 +380,13 @@ void GameManager::renderCubeMap(glm::mat4 view){
 	glBindVertexArray(main_scene_vao[1]);
 
 	glm::mat4 model_mat = glm::scale(glm::mat4(1.0f), glm::vec3(far_plane*0.75f));
-	glm::mat4 model_mat_inverse = glm::inverse(model_mat);
 	glm::mat4 model_view_mat = view * model_mat;
-	glm::mat4 model_view_mat_inverse = glm::inverse(model_view_mat);
-	glm::mat3 normal_mat = glm::transpose(glm::inverse(glm::mat3(model_view_mat)));
 
-	glm::vec3 light_pos = glm::mat3(model_mat_inverse)*light.position / model_mat_inverse[3].w;
+	glm::mat4 model_mat_inverse = glm::inverse(model_mat);
+	glm::mat4 model_view_mat_inverse = glm::inverse(model_view_mat);
+	glm::mat3 normal_mat = glm::transpose(glm::mat3(model_view_mat_inverse));
+
+	glm::vec3 light_pos = glm::mat3(model_mat_inverse) * light.position / model_mat_inverse[3].w;
 	glm::vec3 camera_pos = glm::vec3(model_view_mat_inverse[3] / model_view_mat_inverse[3].w);
 	
 
@@ -388,16 +395,19 @@ void GameManager::renderCubeMap(glm::mat4 view){
 	glUniform3fv(cube_program->getUniform("light_position"), 1, glm::value_ptr(light_pos));
 	glUniform3fv(cube_program->getUniform("camera_position"), 1, glm::value_ptr(camera_pos));
 
-	glUniformMatrix4fv(cube_program->getUniform("mv_mat"), 1, 0, glm::value_ptr(model_view_mat));
+	glUniformMatrix4fv(cube_program->getUniform("model_view_mat"), 1, 0, glm::value_ptr(model_view_mat));
 	glUniformMatrix4fv(cube_program->getUniform("proj_mat"), 1, 0, glm::value_ptr(camera.projection));
-	glUniformMatrix3fv(program->getUniform("normal_mat"), 1, 0, glm::value_ptr(normal_mat));
+	glUniformMatrix3fv(cube_program->getUniform("normal_mat"), 1, 0, glm::value_ptr(normal_mat));
 	glDrawArrays(GL_TRIANGLES, 0, 36);
 }
 
 void GameManager::render() {
 	float elapsed = fps_timer.elapsedAndRestart();
-	glm::mat4 rotation = glm::rotate(elapsed*20.f, glm::vec3(0.0f, 1.0f, 0.0f));
-	light.position = glm::mat3(rotation)*light.position;
+
+	glm::mat4 rotation = glm::rotate(elapsed*20.f, 0.0f, 1.0f, 0.0f);
+	light.position = glm::mat3(rotation) * light.position;
+	light.view = glm::lookAt(light.position, glm::vec3(0), glm::vec3(0.0, 1.0, 0.0));
+
 	glm::mat4 view = camera.view*cam_trackball.getTransform();
 
 	// just showcasing how we would render to a framebuffer
@@ -418,11 +428,11 @@ void GameManager::render() {
 
 	renderCubeMap(view);
 
-	program->use();
-	//glUniform3fv(program->getUniform("light_position"), 1, glm::value_ptr(light.position));
+	// program->use();
+	// glUniform3fv(program->getUniform("light_position"), 1, glm::value_ptr(light.position));
 
 	//Use lighting as default
-	//glUniform1i(program->getUniform("lighting"), 1);
+//	glUniform1i(program->getUniform("lighting"), 1);
 
 	//Render geometry
 	glBindVertexArray(main_scene_vao[0]);
@@ -438,7 +448,7 @@ void GameManager::render() {
 		glEnable(GL_POLYGON_OFFSET_FILL);
 		glPolygonOffset(1.1f, 4.0f);
 		//Render geometry to be offset here
-		renderMeshRecursive(model->getMesh(), program, view, model_matrix, camera.projection, light.position);
+		renderMeshRecursive(model->getMesh(), cube_program, view, model_matrix, camera.projection, light.position);
 		glDisable(GL_POLYGON_OFFSET_FILL);
 
 		//then, render wireframe, without lighting
@@ -456,7 +466,7 @@ void GameManager::render() {
 		THROW_EXCEPTION("Rendermode not supported");
 	}
 
-	renderMeshRecursive(model->getMesh(), program, view, model_matrix, camera.projection, light.position);
+	renderMeshRecursive(model->getMesh(), cube_program, view, model_matrix, camera.projection, light.position);
 
 	if(showDebugView)
 		renderDebugView();
@@ -472,7 +482,7 @@ void GameManager::zoomIn() {
 }
 
 void GameManager::zoomOut() {
-	zoom = max(zoom*0.9f, 0.5f);
+	zoom = std::max(zoom*0.9f, 0.5f);
 	camera.projection = glm::perspective(fovy / zoom,
 		window_width / (float)window_height, near_plane, far_plane);
 }
