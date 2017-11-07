@@ -209,15 +209,13 @@ void GameManager::createSimpleProgram() {
 
 	// alternativly to a separate variable to shader collections we could organize them into a map
 	//shaders.insert(std::make_pair("cube_shaders", new Program(vs_src, fs_src)));
+	//shaders["cube_shaders"]->use();
 	cube_program.reset(new Program(vs_src, gs_src, fs_src));
 
 	cube_program->use();
 	diffuse_cubemap.reset(new GLUtils::CubeMap("cubemaps/diffuse/", "jpg"));
 	glProgramUniform1i(cube_program->name, cube_program->getUniform("cubemap"), 0);
 	cube_program->disuse();
-
-	//Compile shaders, attach to program object, and link
-	// program.reset(new Program(readFile("shaders/basic_phong.vert"), readFile("shaders/basic_phong.frag")));
 }
 
 void GameManager::createVAO() {
@@ -315,13 +313,10 @@ void GameManager::initDebugView(){
 void GameManager::renderMeshRecursive(MeshPart& mesh, const std::shared_ptr<Program>& program, 
 		const glm::mat4& view_matrix, const glm::mat4& model_matrix, glm::mat4& projection_matrix, glm::vec3 light_position) {
 	//Create modelview matrix
-	glm::mat4 meshpart_model_matrix = model_matrix*mesh.transform;
+	glm::mat4 meshpart_model_matrix = model_matrix * mesh.transform;
 	glm::mat4 model_view_mat = view_matrix*meshpart_model_matrix;
 	glm::mat4 model_mat_inverse = glm::inverse(meshpart_model_matrix);
 	glm::mat4 model_view_mat_inverse = glm::inverse(model_view_mat);
-	//Create normal matrix, the transpose of the inverse
-	//3x3 leading submatrix of the modelview matrix
-	glm::mat3 normal_matrix = glm::transpose(glm::inverse(glm::mat3(model_view_mat)));
 
 	glm::vec3 light_pos = glm::mat3(model_mat_inverse) * light_position / model_mat_inverse[3].w;
 	glm::vec3 camera_pos = glm::vec3(model_view_mat_inverse[3] / model_view_mat_inverse[3].w);
@@ -330,7 +325,6 @@ void GameManager::renderMeshRecursive(MeshPart& mesh, const std::shared_ptr<Prog
 
 	glUniformMatrix4fv(program->getUniform("model_view_mat"), 1, 0, glm::value_ptr(model_view_mat));
 	glUniformMatrix4fv(program->getUniform("proj_mat"), 1, 0, glm::value_ptr(projection_matrix));
-	glUniformMatrix3fv(program->getUniform("normal_mat"), 1, 0, glm::value_ptr(normal_matrix));
 
 	glUniform3fv(program->getUniform("colour"), 1, glm::value_ptr(glm::vec3(.0f, 1.8f, .8f)));
 	glUniform3fv(program->getUniform("light_position"), 1, glm::value_ptr(light_pos));
@@ -389,7 +383,7 @@ void GameManager::renderCubeMap(glm::mat4 view){
 	glm::vec3 light_pos = glm::mat3(model_mat_inverse) * light.position / model_mat_inverse[3].w;
 	glm::vec3 camera_pos = glm::vec3(model_view_mat_inverse[3] / model_view_mat_inverse[3].w);
 	
-
+	cube_program->use();
 	glUniform3fv(cube_program->getUniform("colour"), 1, glm::value_ptr(glm::vec3(1.0f, 0.8f, 0.8f)));
 
 	glUniform3fv(cube_program->getUniform("light_position"), 1, glm::value_ptr(light_pos));
@@ -397,8 +391,9 @@ void GameManager::renderCubeMap(glm::mat4 view){
 
 	glUniformMatrix4fv(cube_program->getUniform("model_view_mat"), 1, 0, glm::value_ptr(model_view_mat));
 	glUniformMatrix4fv(cube_program->getUniform("proj_mat"), 1, 0, glm::value_ptr(camera.projection));
-	glUniformMatrix3fv(cube_program->getUniform("normal_mat"), 1, 0, glm::value_ptr(normal_mat));
+	// glUniformMatrix3fv(cube_program->getUniform("normal_mat"), 1, 0, glm::value_ptr(normal_mat));
 	glDrawArrays(GL_TRIANGLES, 0, 36);
+	cube_program->disuse();
 }
 
 void GameManager::render() {
@@ -408,7 +403,8 @@ void GameManager::render() {
 	light.position = glm::mat3(rotation) * light.position;
 	light.view = glm::lookAt(light.position, glm::vec3(0), glm::vec3(0.0, 1.0, 0.0));
 
-	glm::mat4 view = camera.view*cam_trackball.getTransform();
+	// change camera orientation
+	glm::mat4 view = camera.view * cam_trackball.getTransform();
 
 	// just showcasing how we would render to a framebuffer
 	// we render the textures written to our FBO on the debugview
