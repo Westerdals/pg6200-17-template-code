@@ -13,7 +13,6 @@
   <ItemGroup>
     <ClInclude Include="include\GameException.h" />
     <ClInclude Include="include\GameManager.h" />
-    <ClInclude Include="include\GeometryManager.h" />
     <ClInclude Include="include\GLUtils\GLUtils.hpp" />
     <ClInclude Include="include\GLUtils\Program.hpp" />
     <ClInclude Include="include\GLUtils\VBO.hpp" />
@@ -23,14 +22,13 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="include\Timer.h" />
-    <ClInclude Include="VirtualTrackball.h" />
+    <ClInclude Include="include\VirtualTrackball.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\GameManager.cpp" />
-    <ClCompile Include="src\GeometryManager.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\Model.cpp" />
-    <ClCompile Include="src\ScreenshotFBO.cpp" >
+    <ClCompile Include="src\ScreenshotFBO.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="src\VirtualTrackball.cpp" />
@@ -38,15 +36,11 @@
   <ItemGroup>
     <None Include="shaders\fbo.frag" />
     <None Include="shaders\fbo.vert" />
-    <None Include="shaders\basic_phong.frag">
-      <FileType>Document</FileType>
-    </None>
-    <None Include="shaders\basic_phong.vert">
-      <FileType>Document</FileType>
-    </None>
     <None Include="shaders\cube_map.frag" />
     <None Include="shaders\cube_map.geom" />
     <None Include="shaders\cube_map.vert" />
+    <None Include="shaders\shadow.frag" />
+    <None Include="shaders\shadow.vert" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{0EB6082A-7B48-4E60-B4B3-2EB3C7254AC1}</ProjectGuid>

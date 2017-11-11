@@ -50,7 +50,7 @@ public:
 		glEnableVertexAttribArray(loc);
 	}
 
-	GLuint name; //< OpenGL shader program
+	GLuint name; //< OpenGL shader blinn_phong_program
 
 private:
 	void link() {

@@ -24,8 +24,8 @@ inline void checkGLErrors(const char* file, unsigned int line) {
 	GLenum ASSERT_GL_err = glGetError(); 
     if( ASSERT_GL_err != GL_NO_ERROR ) { 
 		std::stringstream ASSERT_GL_string; 
-		ASSERT_GL_string << file << '@' << line << ": OpenGL error:" 
-             << std::hex << ASSERT_GL_err << " " << gluErrorString(ASSERT_GL_err); 
+		ASSERT_GL_string << file << '@' << line << ": OpenGL error:"
+			<< std::hex << ASSERT_GL_err << " ";// << gluErrorString(ASSERT_GL_err);
 			 THROW_EXCEPTION( ASSERT_GL_string.str() ); 
     } 
 }
@@ -43,7 +43,6 @@ inline void checkGLFBOCompleteness(const char* file, unsigned int line) {
 
 
 inline std::string readFile(std::string file) {
-	int length;
 	std::string buffer;
 	std::string contents;
 
@@ -58,7 +57,7 @@ inline std::string readFile(std::string file) {
 
 	// get length of file:
 	is.seekg (0, std::ios::end);
-	length = static_cast<int>(is.tellg());
+	const int length = static_cast<int>(is.tellg());
 	is.seekg (0, std::ios::beg);
 
 	// reserve memory:

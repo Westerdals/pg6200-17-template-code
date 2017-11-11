@@ -79,7 +79,7 @@ protected:
 
 	/**
 	 * Compiles, attaches, links, and sets uniforms for
-	 * a simple OpenGL program
+	 * a simple OpenGL blinn_phong_program
 	 */
 	void createSimpleProgram();
 
@@ -87,12 +87,18 @@ protected:
 	 * Creates vertex array objects
 	 */
 	void createVAO();
+	void init_shadowFBO();
+	void shadow_map_pass();
+	void render_cube_map_shadows(glm::mat4 view) const;
+	void shadow_render();
 
 	static const unsigned int window_width = 800;
 	static const unsigned int window_height = 600;
 
 	static const float cube_vertices_data[];
 	static const float cube_normals_data[];
+	static void write_coordinates(std::stringstream& ss, const float* coords, const int length, const std::string prefix, const int step);
+	static void makeCubeModel();
 
 	float near_plane;
 	float far_plane;
@@ -101,6 +107,8 @@ protected:
 	bool showDebugView;
 
 	int screenshot_number;
+	GLuint depth_texture;
+	GLuint depth_fbo;
 
 private:
 	enum RenderMode {
@@ -115,16 +123,12 @@ private:
 	void GameManager::initDebugView();
 	void GameManager::renderDebugView();
 
-	void (GameManager::*render_model)(); // TODO
-	static void renderMeshRecursive(MeshPart& mesh, const std::shared_ptr<GLUtils::Program>& program, const glm::mat4& modelview, const glm::mat4& transform, 
-		glm::mat4& projection_matrix, glm::vec3 light_position);
 	void GameManager::renderCubeMap(glm::mat4 view);
-
 	void GameManager::screenshot();
 
 	SDL_Window* main_window; //< Our window handle
 	SDL_GLContext main_context; //< Our opengl context handle 
-	RenderMode render_mode; //< The current method of rendering
+	RenderMode render_mode_enum = RENDERMODE_FLAT; //< The current method of rendering
 
 	// vao arrays like this is handy for one "scene"
 	GLuint main_scene_vao[2]; //< number of different "collection" of vbo's we have
@@ -137,9 +141,9 @@ private:
 	std::shared_ptr<GLUtils::CubeMap> diffuse_cubemap;
 	std::shared_ptr<GLUtils::VBO<GL_ARRAY_BUFFER> > cube_vertices, cube_normals;
 
-	// we make the quad vbo without help from program.hpp
+	// we make the quad vbo without help from Program.hpp
 	// this is just like the code for triangle primitives in lab_01_solution
-	// and that you will find inside program.hpp now
+	// and that you will find inside Program.hpp now
 	GLuint debugview;
 
 	// FBO screenshot
@@ -160,9 +164,16 @@ private:
 		glm::mat4 view;
 	} camera;
 
-	std::shared_ptr<Model> model;
-	std::shared_ptr<GLUtils::Program> program, cube_program, debugview_program;
-	glm::mat4 model_matrix; // TODO should be in a struct with the model mesh
+	std::shared_ptr<Model> bunny_model;
+	std::shared_ptr<Model> cube_model;
+//	std::shared_ptr<GLUtils::Program> blinn_phong_program;
+	std::shared_ptr<GLUtils::Program> cube_program;
+	std::shared_ptr<GLUtils::Program> debugview_program;
+	std::shared_ptr<GLUtils::Program> shadow_program;
+
+	glm::mat4 bunny_model_matrix; // TODO should be in a struct with the bunny_model mesh
+	glm::mat4 cube_model_matrix;
+
 };
 
 #endif // _GAMEMANAGER_H_

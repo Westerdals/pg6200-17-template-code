@@ -7,7 +7,7 @@
 #endif
 
 /**
- * Simple program that starts our game manager
+ * Simple blinn_phong_program that starts our game manager
  */
 int main(int argc, char *argv[]) {
 	std::shared_ptr<GameManager> game;
