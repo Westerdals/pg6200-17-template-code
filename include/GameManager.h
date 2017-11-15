@@ -14,6 +14,7 @@
 #include "Model.h"
 #include "VirtualTrackball.h"
 #include "ScreenshotFBO.h"
+#include "GLUtils/DebugOutput.h"
 
 /**
  * This class handles the game logic and display.

@@ -195,6 +195,9 @@ void GameManager::createOpenGLContext(){
 	//Create OpenGL context
 	main_context = SDL_GL_CreateContext(main_window);
 
+	//enabling new kind of debugging:
+	glEnable(GL_DEBUG_OUTPUT);
+
 	// Init glew
 	// glewExperimental is required in openGL 3.3 
 	// to create forward compatible contexts 
@@ -205,6 +208,10 @@ void GameManager::createOpenGLContext(){
 		err << "Error initializing GLEW: " << glewGetErrorString(glewErr);
 		THROW_EXCEPTION(err.str());
 	}
+
+	// must be called AFTER glewInit() is called
+	glDebugMessageCallback((GLDEBUGPROC)GLUtils::DebugOutput::myCallback, nullptr);
+	glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
 
 	// Unfortunately glewInit generates an OpenGL error, but does what it's
 	// supposed to (setting function pointers for core functionality).
