@@ -13,8 +13,10 @@
   <ItemGroup>
     <ClInclude Include="include\GameException.h" />
     <ClInclude Include="include\GameManager.h" />
+    <ClInclude Include="include\GLUtils\DebugOutput.h" />
     <ClInclude Include="include\GLUtils\GLUtils.hpp" />
     <ClInclude Include="include\GLUtils\Program.hpp" />
+    <ClInclude Include="include\GLUtils\ShadowProgram.h" />
     <ClInclude Include="include\GLUtils\VBO.hpp" />
     <ClInclude Include="include\GLUtils\CubeMap.hpp" />
     <ClInclude Include="include\Model.h" />

@@ -6,7 +6,6 @@
 class ScreenshotFBO
 {
 public:
-	ScreenshotFBO();
 	ScreenshotFBO(unsigned int width, unsigned int height);
 	~ScreenshotFBO();
 	void bind();

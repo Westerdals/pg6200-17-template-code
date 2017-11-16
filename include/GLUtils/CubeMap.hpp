@@ -14,6 +14,9 @@
 namespace GLUtils {
 
 	class CubeMap {
+
+
+
 	public:
 		CubeMap(std::string base_filename, std::string extension) {
 			//Load cubemap from file

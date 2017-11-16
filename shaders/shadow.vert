@@ -1,11 +1,7 @@
 #version 150
-uniform mat4 light_transform;
+uniform mat4 model_view_projection;
 in vec3 position;
 
-in vec2 in_depth_texture;
-out vec2 ex_depth_texture;
-
 void main(){
-	gl_Position = light_transform * vec4(position, 1.0f);
-	ex_depth_texture = in_depth_texture;
+	gl_Position = model_view_projection * vec4(position, 1.0f);
 }

@@ -14,6 +14,13 @@
 #include "Model.h"
 #include "VirtualTrackball.h"
 #include "ScreenshotFBO.h"
+#include "GLUtils/ShadowProgram.h"
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/transform2.hpp>
+#include <glm/detail/_vectorize.hpp>
+#include <glm/detail/_vectorize.hpp>
+#include <glm/detail/_vectorize.hpp>
 #include "GLUtils/DebugOutput.h"
 
 /**
@@ -40,6 +47,7 @@ public:
 	 */
 	void init();
 
+	void printDebug();
 	/**
 	 * The main loop of the game. Runs the SDL main loop
 	 */
@@ -89,17 +97,19 @@ protected:
 	 */
 	void createVAO();
 	void init_shadowFBO();
-	void shadow_map_pass();
-	void render_cube_map_shadows(glm::mat4 view) const;
-	void shadow_render();
+	void render_to_shadow_fbo();
+	void render_cubemap_depth(const mat4& view);
+	void render_bunny_shadow_recursive(MeshPart& mesh,
+							   const std::shared_ptr<Program>& program,
+							   const mat4& view_matrix,
+							   const mat4& model_matrix,
+							   mat4& projection_matrix) const;
 
 	static const unsigned int window_width = 800;
 	static const unsigned int window_height = 600;
 
 	static const float cube_vertices_data[];
 	static const float cube_normals_data[];
-	static void write_coordinates(std::stringstream& ss, const float* coords, const int length, const std::string prefix, const int step);
-	static void makeCubeModel();
 
 	float near_plane;
 	float far_plane;
@@ -110,8 +120,23 @@ protected:
 	int screenshot_number;
 	GLuint depth_texture;
 	GLuint depth_fbo;
+	int depth_fbo_width;
+	int depth_fbo_height;
+	glm::mat4 scale_bias_matrix;
+	mat4 cube_depthMVP;
+	mat4 bunny_depthMVP;
 
 private:
+	struct POV_entity{
+		glm::vec3 position;
+		glm::mat4 projection;
+		glm::mat4 view;
+	};
+
+	enum MeshIndex{
+		BUNNY = 0,
+		CUBE
+	};
 	enum RenderMode {
 		RENDERMODE_PHONG,
 		RENDERMODE_WIREFRAME,
@@ -123,8 +148,25 @@ private:
 	void zoomOut();
 	void GameManager::initDebugView();
 	void GameManager::renderDebugView();
+	void renderMeshRecursive(
+		MeshPart& mesh,
+		const std::shared_ptr<Program>& program,
+		const mat4& view_matrix,
+		const mat4& model_matrix,
+		const mat4& shadow_matrix,
+		mat4& projection_matrix,
+		glm::vec3 light_position
+	);
 
-	void GameManager::renderCubeMap(glm::mat4 view);
+	void render_bunny_depth(MeshPart& mesh,
+							   const std::shared_ptr<Program>& program,
+							   const mat4& view_matrix,
+							   const mat4& model_matrix,
+							   const mat4& projection_matrix);
+
+	void GameManager::renderCubeMap(const glm::mat4& view, const glm::mat4& projection, const mat4& shadow_matrix);
+//	void GameManager::renderCubeMap(const ::GameManager::POV_entity& view, const mat4& shadow_matrix);
+
 	void GameManager::screenshot();
 
 	SDL_Window* main_window; //< Our window handle
@@ -132,7 +174,7 @@ private:
 	RenderMode render_mode_enum = RENDERMODE_FLAT; //< The current method of rendering
 
 	// vao arrays like this is handy for one "scene"
-	GLuint main_scene_vao[2]; //< number of different "collection" of vbo's we have
+	GLuint main_scene_vao[2]; // number of different "collection" of vbo's we have
 	// Different scenes can be structured with different vaos
 	GLuint debugview_vao;
 
@@ -154,27 +196,17 @@ private:
 	Timer fps_timer;
 	VirtualTrackball cam_trackball;
 
-	struct {
-		glm::vec3 position;
-		glm::mat4 projection;
-		glm::mat4 view;
-	} light;
+	
 
-	struct {
-		glm::mat4 projection;
-		glm::mat4 view;
-	} camera;
+	POV_entity camera, light, current_POV;
 
-	std::shared_ptr<Model> bunny_model;
-	std::shared_ptr<Model> cube_model;
-//	std::shared_ptr<GLUtils::Program> blinn_phong_program;
-	std::shared_ptr<GLUtils::Program> cube_program;
-	std::shared_ptr<GLUtils::Program> debugview_program;
-	std::shared_ptr<GLUtils::Program> shadow_program;
+	std::shared_ptr<Model> bunny_model, cube_model;
+	std::shared_ptr<GLUtils::Program> cube_program, debugview_program;
+	std::shared_ptr<GLUtils::ShadowProgram> shadow_program;
 
 	glm::mat4 bunny_model_matrix; // TODO should be in a struct with the bunny_model mesh
 	glm::mat4 cube_model_matrix;
 
 };
-
+ 
 #endif // _GAMEMANAGER_H_

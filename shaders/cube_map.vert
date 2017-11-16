@@ -1,10 +1,12 @@
 #version 150
 
 uniform mat4 model_view_mat;
+
 uniform mat4 proj_mat;
 uniform mat3 normal_mat;
 uniform vec3 light_position;
 uniform vec3 camera_position;
+
 
 in vec3 position;
 in vec3 normal;
@@ -13,6 +15,9 @@ out vec3 v;
 out vec3 l;
 out vec3 n;
 out vec3 cube_tex_coord;
+
+uniform mat4 shadow_MVP;
+out vec4 ex_shadow_coord;
 
 void main() {
 	vec4 pos = model_view_mat * vec4(position, 1.f);
@@ -27,4 +32,6 @@ void main() {
 	n = normalize(normal);
 
 	cube_tex_coord = position;
+	
+	ex_shadow_coord = shadow_MVP * vec4(position, 1.f);
 }

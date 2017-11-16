@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <glm/gtc/matrix_transform.hpp>
+#include "GLUtils/GLUtils.hpp"
 
 
 Model::Model(std::string filename, bool invert){
@@ -148,69 +149,19 @@ void Model::loadRecursive(MeshPart& part, bool invert,
 	}
 }
 
-void Model::renderMeshRecursive(const std::shared_ptr<Program>& program,
-                                const mat4& view_matrix, const mat4& model_matrix, mat4& projection_matrix,
-                                glm::vec3 light_position){
 
-	renderMeshRecursive(this->root, program, view_matrix, model_matrix, projection_matrix, light_position);
-}
-
-void Model::render_for_shadow(const std::shared_ptr<Program>& program,
-                              const mat4& view_matrix,
-                              const mat4& model_matrix,
-                              mat4& projection_matrix){
-	renderShadowRecursive(this->root, program, view_matrix, model_matrix, projection_matrix);
-}
-
-void Model::renderShadowRecursive(MeshPart& mesh, 
-							  const std::shared_ptr<Program>& program,
-                              const mat4& view_matrix, 
-							  const mat4& model_matrix, 
-							  mat4& projection_matrix) const{
-
-	const mat4 meshpart_model_matrix = model_matrix * mesh.transform;
-	mat4 light_mvp = projection_matrix * view_matrix * meshpart_model_matrix;
-
-	program->use();
-	const auto loc = program->getUniform("light_transform");
-	glUniformMatrix4fv(loc, 1, GL_FALSE, value_ptr(light_mvp));
-
+void write_to_position_rec(GLuint location, MeshPart& mesh){
+	glVertexAttribPointer(location, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
 	glDrawArrays(GL_TRIANGLES, mesh.first, mesh.count);
-	for(int i = 0; i < (int) mesh.children.size(); ++i){
-		renderShadowRecursive(mesh.children.at(i), program, view_matrix, meshpart_model_matrix, projection_matrix);
-	}
-	program->disuse();
+	for(int i = 0; i < (int) mesh.children.size(); ++i)
+		write_to_position_rec(location, mesh.children.at(i));
+}
+
+void Model::write_to_position(GLuint location){
+	glEnableVertexAttribArray(location);
+	write_to_position_rec(location, this->root);
+	glDisableVertexAttribArray(location);
+
 }
 
 
-void Model::renderMeshRecursive(MeshPart& mesh, const std::shared_ptr<Program>& program,
-                                const mat4& view_matrix, const mat4& model_matrix, mat4& projection_matrix,
-                                glm::vec3 light_position){
-	//Create modelview matrix
-	const mat4 meshpart_model_matrix = model_matrix * mesh.transform;
-	mat4 model_view_mat = view_matrix * meshpart_model_matrix;
-	mat4 model_mat_inverse = inverse(meshpart_model_matrix);
-	mat4 model_view_mat_inverse = inverse(model_view_mat);
-	//Create normal matrix, the transpose of the inverse
-	//3x3 leading submatrix of the modelview matrix
-	glm::mat3 normal_matrix = transpose(inverse(glm::mat3(model_view_mat)));
-	glm::vec3 light_pos = glm::mat3(model_mat_inverse) * light_position / model_mat_inverse[3].w;
-	glm::vec3 camera_pos = glm::vec3(model_view_mat_inverse[3] / model_view_mat_inverse[3].w);
-
-	program->use();
-
-	glUniformMatrix4fv(program->getUniform("model_view_mat"), 1, 0, value_ptr(model_view_mat));
-	glUniformMatrix4fv(program->getUniform("proj_mat"), 1, 0, value_ptr(projection_matrix));
-	glUniformMatrix3fv(program->getUniform("normal_mat"), 1, 0, value_ptr(normal_matrix));
-
-	glUniform3fv(program->getUniform("colour"), 1, value_ptr(glm::vec3(.0f, 1.8f, .8f)));
-	glUniform3fv(program->getUniform("light_position"), 1, value_ptr(light_pos));
-	glUniform3fv(program->getUniform("camera_position"), 1, value_ptr(camera_pos));
-
-	glDrawArrays(GL_TRIANGLES, mesh.first, mesh.count);
-	for (int i = 0; i < (int)mesh.children.size(); ++i)
-		renderMeshRecursive(mesh.children.at(i), program, view_matrix, meshpart_model_matrix, projection_matrix,
-		                    light_position);
-
-	program->disuse();
-}

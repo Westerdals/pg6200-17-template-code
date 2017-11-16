@@ -48,6 +48,12 @@
     <ClInclude Include="include\VirtualTrackball.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\GLUtils\ShadowProgram.h">
+      <Filter>Header Files\GLUtils</Filter>
+    </ClInclude>
+    <ClInclude Include="include\GLUtils\DebugOutput.h">
+      <Filter>Header Files\GLUtils</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\GameManager.cpp">

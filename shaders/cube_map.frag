@@ -1,6 +1,7 @@
 #version 150
 
 uniform samplerCube cubemap;
+uniform sampler2DShadow shadow_map;
 uniform vec3 colour;
 
 in vec3 cube_map_coord;
@@ -8,6 +9,7 @@ in vec3 view;
 in vec3 light;
 in vec3 normal;
 
+in vec4 shadow_coord;
 
 void main() {
 	vec3 l = normalize(light);
@@ -16,6 +18,8 @@ void main() {
 
 	float spec = pow(max(0.f, dot(h, n)), 128.f);
 	vec4 diffuse = texture(cubemap, cube_map_coord) * dot(l, n);
+	float f = textureProj(shadow_map, shadow_coord);
+//	gl_FragColor = vec4( vec3(f * (diffuse * vec3(colour) + vec3(spec))), 1.0f );
 
-	gl_FragColor = diffuse * vec4(colour, 1.f) + vec4(spec);
+	gl_FragColor = f*diffuse * vec4(colour, 1.f) + vec4(spec);
 }

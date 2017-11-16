@@ -36,32 +36,14 @@ public:
 	std::shared_ptr<GLUtils::VBO<GL_ARRAY_BUFFER>> getVertices(){ return vertices; }
 	std::shared_ptr<GLUtils::VBO<GL_ARRAY_BUFFER>> getNormals(){ return normals; }
 	std::shared_ptr<GLUtils::VBO<GL_ARRAY_BUFFER>> getColors(){ return colors; }
-	void renderMeshRecursive(const std::shared_ptr<Program>& program,
-	                         const mat4& view_matrix,
-	                         const mat4& model_matrix,
-	                         mat4& projection_matrix,
-	                         glm::vec3 light_position);
-	void render_for_shadow(const std::shared_ptr<Program>& program,
-	                       const mat4& view_matrix,
-	                       const mat4& model_matrix,
-	                       mat4& projection_matrix);
-
+	
+	void write_to_position();
 private:
 	static void loadRecursive(MeshPart& part, bool invert,
 	                          std::vector<float>& vertex_data, std::vector<float>& normal_data,
 	                          std::vector<float>& color_data, const aiScene* scene, const aiNode* node);
-	void renderShadowRecursive(MeshPart& mesh,
-	                       const std::shared_ptr<Program>& program,
-	                       const mat4& view_matrix,
-	                       const mat4& model_matrix,
-	                       mat4& projection_matrix) const;
-
-	void renderMeshRecursive(MeshPart& mesh,
-	                         const std::shared_ptr<Program>& program,
-	                         const mat4& view_matrix,
-	                         const mat4& model_matrix,
-	                         mat4& projection_matrix,
-	                         glm::vec3 light_position);
+	void write_to_position(GLuint loc);
+	
 
 	static void findBBoxRecursive(const aiScene* scene, const aiNode* node, glm::vec3& min_dim, glm::vec3& max_dim,
 	                              aiMatrix4x4* trafo);
