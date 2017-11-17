@@ -71,7 +71,7 @@ public:
 	GLuint name; //< OpenGL shader program
 
 	protected:
-		void link(){
+		void link() const{
 			std::stringstream log;
 
 			glLinkProgram(name);

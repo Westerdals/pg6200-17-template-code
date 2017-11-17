@@ -2,6 +2,9 @@
 
 uniform samplerCube cubemap;
 uniform sampler2DShadow shadow_map;
+//uniform sampler2D shadow_map;
+uniform sampler2D gShadowMap;                                                       
+
 uniform vec3 colour;
 
 in vec3 cube_map_coord;

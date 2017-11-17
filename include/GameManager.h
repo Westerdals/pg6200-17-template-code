@@ -97,7 +97,7 @@ protected:
 	 */
 	void createVAO();
 	void init_shadowFBO();
-	void render_to_shadow_fbo();
+	void initRenderToShadowFBO();
 	void render_cubemap_depth(const mat4& view);
 	void render_bunny_shadow_recursive(MeshPart& mesh,
 							   const std::shared_ptr<Program>& program,
