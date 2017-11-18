@@ -20,7 +20,7 @@
     <ClInclude Include="include\GLUtils\VBO.hpp" />
     <ClInclude Include="include\GLUtils\CubeMap.hpp" />
     <ClInclude Include="include\Model.h" />
-    <ClInclude Include="include\ScreenshotFBO.h">
+    <ClInclude Include="include\FBO.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="include\Timer.h" />
@@ -30,7 +30,7 @@
     <ClCompile Include="src\GameManager.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\Model.cpp" />
-    <ClCompile Include="src\ScreenshotFBO.cpp">
+    <ClCompile Include="src\FBO.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="src\VirtualTrackball.cpp" />

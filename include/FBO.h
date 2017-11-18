@@ -3,11 +3,11 @@
 
 #include "GLUtils/GLUtils.hpp"
 
-class ScreenshotFBO
+class FBO
 {
 public:
-	ScreenshotFBO(unsigned int width, unsigned int height);
-	~ScreenshotFBO();
+	FBO(unsigned int width, unsigned int height);
+	~FBO();
 	void bind();
 	static void unbind();
 

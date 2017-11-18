@@ -148,20 +148,3 @@ void Model::loadRecursive(MeshPart& part, bool invert,
 		loadRecursive(part.children.back(), invert, vertex_data, normal_data, color_data, scene, node->mChildren[n]);
 	}
 }
-
-
-void write_to_position_rec(GLuint location, MeshPart& mesh){
-	glVertexAttribPointer(location, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
-	glDrawArrays(GL_TRIANGLES, mesh.first, mesh.count);
-	for(int i = 0; i < (int) mesh.children.size(); ++i)
-		write_to_position_rec(location, mesh.children.at(i));
-}
-
-void Model::write_to_position(GLuint location){
-	glEnableVertexAttribArray(location);
-	write_to_position_rec(location, this->root);
-	glDisableVertexAttribArray(location);
-
-}
-
-

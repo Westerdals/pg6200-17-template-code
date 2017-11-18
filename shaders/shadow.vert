@@ -1,4 +1,4 @@
-#version 150
+#version 330
 uniform mat4 model_view_projection;
 in vec3 position;
 

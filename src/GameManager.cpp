@@ -1,12 +1,14 @@
 #include "GameManager.h"
-#include "GeometryManager.h"
 #include <iostream>
 #include <string>
 #include <sstream>
 #include <vector>
 #include <assert.h>
 #include <stdexcept>
-
+#include <glm/gtx/transform2.hpp>
+#include "GLUtils/DebugOutput.h"
+#include "GLUtils/GLUtils.hpp"
+#include <glm/gtc/matrix_transform.hpp>
 
 using std::cerr;
 using std::endl;
@@ -123,6 +125,9 @@ GameManager::GameManager(){
 	near_plane = 0.5f;
 	far_plane = 30.0f;
 	fovy = 45.0f;
+
+	depth_fbo_width = window_width;
+	depth_fbo_height = window_height;
 }
 
 
@@ -142,6 +147,7 @@ void GameManager::init(){
 
 	createOpenGLContext();
 	setOpenGLStates();
+	CHECK_GL_ERROR();
 	createMatrices();
 
 	createSimpleProgram();
@@ -182,8 +188,6 @@ void GameManager::createOpenGLContext(){
 	//Create OpenGL context
 	main_context = SDL_GL_CreateContext(main_window);
 
-	//enabling new kind of debugging:
-	glEnable(GL_DEBUG_OUTPUT);
 
 	// Init glew
 	// glewExperimental is required in openGL 3.3 
@@ -196,9 +200,11 @@ void GameManager::createOpenGLContext(){
 		THROW_EXCEPTION(err.str());
 	}
 
-	// must be called AFTER glewInit() is called
-	glDebugMessageCallback((GLDEBUGPROC)GLUtils::DebugOutput::myCallback, nullptr);
+	//enabling KHR debugging
+	glEnable(GL_DEBUG_OUTPUT);
+	glDebugMessageCallback(GLDEBUGPROC(GLUtils::DebugOutput::myCallback), nullptr);
 	glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
+	
 
 	// Unfortunately glewInit generates an OpenGL error, but does what it's
 	// supposed to (setting function pointers for core functionality).
@@ -209,15 +215,13 @@ void GameManager::createOpenGLContext(){
 }
 
 void GameManager::setOpenGLStates(){
-
 	glEnable(GL_DEPTH_TEST);
-//	glDepthFunc(GL_LEQUAL);
 	glDepthFunc(GL_LEQUAL);
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 	glClearColor(0.0, 0.0, 0.5, 1.0);
 	glViewport(0, 0, window_width, window_height);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
 
@@ -229,7 +233,7 @@ void GameManager::createMatrices(){
 	camera.view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -10.0f));
 
 	light.position = glm::vec3(10, 0, 0);
-	light.projection = glm::perspective(glm::half_pi<float>(), 1.0f, near_plane, far_plane);
+	light.projection = glm::perspective(fovy, depth_fbo_width / (float)depth_fbo_height, near_plane, far_plane);
 	light.view = glm::lookAt(light.position, glm::vec3(0), glm::vec3(0.0, 1.0, 0.0));
 
 	scale_bias_matrix = glm::scale(glm::translate(mat4(1.0f), glm::vec3(0.5f)), glm::vec3(0.5f));
@@ -241,7 +245,7 @@ void GameManager::createSimpleProgram(){
 	/// create shadow program 
 	shadow_program.reset(new ShadowProgram());
 	shadow_program->init();
-
+	CHECK_GL_ERROR();
 
 	std::string fs_src = readFile("shaders/cube_map.frag");
 	std::string vs_src = readFile("shaders/cube_map.vert");
@@ -300,15 +304,11 @@ void GameManager::createVAO(){
 
 	glBindVertexArray(0);
 
-	//	initDebugView();
-	//	screenshot_fbo.reset(new ScreenshotFBO(1024, 1024));
-
 }
 
 void GameManager::init_shadowFBO(){
 	int LoD = 0;
-	depth_fbo_width = window_width;
-	depth_fbo_height = window_height;
+
 	glGenTextures(1, &depth_texture);
 	glBindTexture(GL_TEXTURE_2D, depth_texture);
 	glTexImage2D(GL_TEXTURE_2D, LoD, GL_DEPTH_COMPONENT, depth_fbo_width, depth_fbo_height, 0, GL_DEPTH_COMPONENT,
@@ -317,8 +317,8 @@ void GameManager::init_shadowFBO(){
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	//	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-	//	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
 
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -328,7 +328,7 @@ void GameManager::init_shadowFBO(){
 	glGenFramebuffers(1, &depth_fbo);
 	glBindFramebuffer(GL_FRAMEBUFFER, depth_fbo);
 	// Pass the depth texture in
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depth_texture, 0);
+	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depth_texture, 0);
 	// no color buffer
 	glDrawBuffer(GL_NONE);
 	glReadBuffer(GL_NONE);
@@ -341,19 +341,25 @@ void GameManager::init_shadowFBO(){
 }
 
 void GameManager::initRenderToShadowFBO(){
-	glBindFramebuffer(GL_FRAMEBUFFER, depth_fbo);
 	glViewport(0, 0, depth_fbo_width, depth_fbo_height);
 	CHECK_GL_ERROR();
-	//		glClearDepth(1.0f);
+	glClearDepth(1.0f);
 	glClear(GL_DEPTH_BUFFER_BIT);
+	glEnable(GL_POLYGON_OFFSET_FILL);
+	// as per official doc: offset applied before the depth test is performed 
+	// and before the value is written into the depth buffer.
+	// Used to avoid depth fighting (also known as "Shadow acne". Yuck.).
+	glPolygonOffset(2.f, 4.f);
 	CHECK_GL_ERROR();
 }
 
 void GameManager::render_cubemap_depth(const glm::mat4& view){
-
+	mat4 light_mvp = light.projection * view * cube_model_matrix;
 	shadow_program->use();
 	const auto loc = shadow_program->getUniform("model_view_projection");
-	glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(cube_depthMVP));
+	glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(light_mvp));
+
+	//	glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(view));
 	glDrawArrays(GL_TRIANGLES, 0, 36);
 	shadow_program->disuse();
 }
@@ -364,11 +370,8 @@ void GameManager::render_bunny_depth(MeshPart& mesh,
                                      const mat4& model_matrix,
                                      const mat4& projection_matrix){
 
-	/*const mat4 meshpart_model_matrix = model_matrix * mesh.transform;
-	mat4 light_mvp = projection_matrix * view_matrix * meshpart_model_matrix;*/
 	const mat4 meshpart_model_matrix = model_matrix * mesh.transform;
-	mat4 light_mvp = mesh.transform * projection_matrix * view_matrix * model_matrix;
-
+	mat4 light_mvp = projection_matrix * view_matrix * meshpart_model_matrix;
 	program->use();
 	const auto loc = program->getUniform("model_view_projection");
 	glUniformMatrix4fv(loc, 1, GL_FALSE, value_ptr(light_mvp));
@@ -387,7 +390,7 @@ void GameManager::renderCubeMap(const glm::mat4& view, const glm::mat4& projecti
 	glBindVertexArray(main_scene_vao[CUBE]);
 	CHECK_GL_ERROR();
 
-	glm::vec3 colour = glm::vec3(1.0f, 0.8f, 0.8f);
+	glm::vec3 colour = glm::vec3(.9f, 0.9f, 1.0f);
 	glm::mat4 model_view_mat = view * cube_model_matrix;
 
 	glm::mat4 model_mat_inverse = glm::inverse(cube_model_matrix);
@@ -458,6 +461,7 @@ void GameManager::renderMeshRecursive(
 	program->disuse();
 }
 
+/*
 void GameManager::render_bunny_shadow_recursive(MeshPart& mesh,
                                                 const std::shared_ptr<Program>& program,
                                                 const mat4& view_matrix,
@@ -477,65 +481,83 @@ void GameManager::render_bunny_shadow_recursive(MeshPart& mesh,
 	}
 	program->disuse();
 }
+*/
 
 void GameManager::render(){
 	const float elapsed = fps_timer.elapsedAndRestart();
 
-	glm::mat4 rotation = glm::rotate(elapsed * 1.f, glm::vec3(0.0f, 1.0f, 0.0f));
+	glm::mat4 rotation = glm::rotate(elapsed * 0.5f, glm::vec3(0.0f, 1.0f, 0.0f));
 	light.position = glm::mat3(rotation) * light.position;
 	light.view = glm::lookAt(light.position, glm::vec3(0), glm::vec3(0.0, 1.0, 0.0));
+
+	auto dotprod_light_z = glm::dot(glm::vec3(0, 0, -1), glm::normalize(glm::vec3(light.position.x, 0, light.position.z)));
+	if (glm::abs(dotprod_light_z) >= 1-10e-6f){
+//		std::cout << "light z: " << light.position.z << std::endl;
+		std::cout << "light xz dot z axis: " << dotprod_light_z << std::endl;
+	}
 
 	glm::mat4 view = camera.view * cam_trackball.getTransform();
 
 	cube_depthMVP = light.projection * light.view * cube_model_matrix;
 	bunny_depthMVP = light.projection * light.view * bunny_model_matrix;
+//	cube_depthMVP = light.projection * light.view ;
+//	bunny_depthMVP = light.projection * light.view;
 
 	glm::mat4 cube_depthBiasMVP = scale_bias_matrix * cube_depthMVP;
 	glm::mat4 bunny_depthBiasMVP = scale_bias_matrix * bunny_depthMVP;
 
 
 	///******************* R T T ******************************
+	if (showDebugView){
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	}
+	else{
+		glBindFramebuffer(GL_FRAMEBUFFER, depth_fbo);
+	}
 
 	// ******** prepare shadow FBO + "shrink" viewport to the FBO (texture) size + clear depth
 	initRenderToShadowFBO();
+	glCullFace(GL_BACK);
 	// ******** render bunny
 	glBindVertexArray(main_scene_vao[BUNNY]);
-	render_bunny_depth(bunny_model->getMesh(), shadow_program, light.view, bunny_model_matrix, camera.projection);
-
+	render_bunny_depth(bunny_model->getMesh(), shadow_program, light.view, bunny_model_matrix, light.projection);
 	CHECK_GL_ERROR();
 	// ******* render cube
-//		glBindVertexArray(main_scene_vao[CUBE]);
-//		render_cubemap_depth(light.view);
-//		CHECK_GL_ERROR();
+	//	glBindVertexArray(main_scene_vao[CUBE]);
+	//	render_cubemap_depth(light.view);
+	//	CHECK_GL_ERROR();
+	glDisable(GL_POLYGON_OFFSET_FILL);
 
-	///******************* FINAL RENDER PASS ************************************
-	// ******* prepare actual render-to-screen FBO
-	glBindFramebuffer(GL_FRAMEBUFFER, 0); //go back to main framebuffer
-	glViewport(0, 0, window_width, window_height); //blow viewport back up to window size
-	glEnable(GL_CULL_FACE);
-	glCullFace(GL_BACK);
-	CHECK_GL_ERROR();
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear color + depth
+	if (!showDebugView){
+		///******************* FINAL RENDER PASS ************************************
+		// ******* prepare actual render-to-screen FBO
+		glBindFramebuffer(GL_FRAMEBUFFER, 0); //go back to main framebuffer
+		glViewport(0, 0, window_width, window_height); //blow viewport back up to window size
+		CHECK_GL_ERROR();
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear color + depth
 
-	// ******* render cube with shadows
-	cube_program->use();
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, depth_texture);
-	CHECK_GL_ERROR();
-	glUniform1i(cube_program->getUniform("shadow_map"), 0);
-	CHECK_GL_ERROR();
-	diffuse_cubemap->bindTexture(GL_TEXTURE1);
-	CHECK_GL_ERROR();
+		// ******* render cube with shadows
+		cube_program->use();
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, depth_texture);
+		CHECK_GL_ERROR();
+		glUniform1i(cube_program->getUniform("shadow_map"), 0);
+		CHECK_GL_ERROR();
+		diffuse_cubemap->bindTexture(GL_TEXTURE1);
+		CHECK_GL_ERROR();
 
-	renderCubeMap(view, camera.projection, cube_depthBiasMVP);
-	CHECK_GL_ERROR();
-	glBindVertexArray(main_scene_vao[BUNNY]);
+		renderCubeMap(view, camera.projection, cube_depthBiasMVP);
+		CHECK_GL_ERROR();
+		glBindVertexArray(main_scene_vao[BUNNY]);
+		glCullFace(GL_FRONT);
 
-	renderMeshRecursive(bunny_model->getMesh(), cube_program, view, bunny_model_matrix, bunny_depthBiasMVP,
-	                    camera.projection, light.position);
-	glBindVertexArray(0);
-	CHECK_GL_ERROR();
-	//	diffuse_cubemap->unbindTexture();
+		renderMeshRecursive(bunny_model->getMesh(), cube_program, view, bunny_model_matrix, bunny_depthBiasMVP,
+		                    camera.projection, light.position);
+		glBindVertexArray(0);
+		CHECK_GL_ERROR();
+			diffuse_cubemap->unbindTexture();
+	}
 
 
 }
@@ -587,7 +609,7 @@ void GameManager::play(){
 							showDebugView = !showDebugView;
 							break;
 						case SDLK_p:
-							screenshot();
+							//							screenshot();
 							break;
 						case SDLK_RIGHT:
 							camera.view = glm::translate(camera.view, glm::vec3(-0.1, 0.0, 0.0));
@@ -642,101 +664,4 @@ void GameManager::play(){
 
 void GameManager::quit(){
 	std::cout << "Bye bye..." << std::endl;
-}
-
-
-void GameManager::initDebugView(){
-	glGenVertexArrays(1, &debugview_vao); // create an array that represents the whole debugview object
-
-	glBindVertexArray(debugview_vao); // enable it
-
-	// an example of quads instead of triangles
-	static float positions[8] = {
-		-1.0, 1.0,
-		-1.0, -1.0,
-		1.0, 1.0,
-		1.0, -1.0
-	};
-
-	glGenBuffers(1, &debugview);
-	// create a name in OpenGL for the position coords and save it locally in "GLuint debugview"
-	glBindBuffer(GL_ARRAY_BUFFER, debugview); // activate a storage for that name
-	glBufferData(GL_ARRAY_BUFFER, 8 * sizeof(float), &positions[0], GL_STATIC_DRAW); // fill the storage with data
-
-	debugview_program->setAttributePointer("position", 2);
-	// link the data to a variable in the shader program
-
-	glBindVertexArray(0); // stop modifying the debugview mesh / data
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-}
-
-void GameManager::renderDebugView(){
-	glViewport(0, 0, window_width, window_height);
-	glBindFramebufferEXT(GL_FRAMEBUFFER, 0);
-
-	glBindVertexArray(debugview_vao);
-	debugview_program->use();
-
-	glUniform1i(debugview_program->getUniform("texture"), 0);
-	glBindTexture(GL_TEXTURE_2D, screenshot_fbo->getTexture());
-
-	// this is independent of the transformations to the world
-	// we are talking about window space
-	glm::mat3 transform = glm::mat3(
-		glm::vec3(0.5, 0.0, 0.0),
-		glm::vec3(0.0, 0.5, 0.0),
-		glm::vec3(-0.5, -0.5, 0.5));
-	// for debug
-	transform = glm::mat4(1.f);
-
-	glProgramUniformMatrix3fv(debugview_program->name, debugview_program->getUniform("transform"), 1, 0,
-	                          glm::value_ptr(transform));
-
-	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-	debugview_program->disuse();
-	glBindVertexArray(0);
-}
-
-void GameManager::screenshot(){
-	// set a unique filename for each new screenshot (only unique per application run!)
-	std::stringstream filename_stream;
-	filename_stream << "screenshot_" << screenshot_number << ".png";
-	std::string filename = filename_stream.str();
-	++screenshot_number;
-
-	int width = screenshot_fbo->getWidth();
-	int height = screenshot_fbo->getHeight();
-
-	// need to store the data on the CPU before writing to file
-	std::vector<unsigned char> screenshot_data;
-	screenshot_data.resize(width * height * 4);
-
-	// read pixels from FBO
-	screenshot_fbo->bind();
-	glReadPixels(0, 0, width, height, GL_BGRA, GL_UNSIGNED_BYTE, (void*)screenshot_data.data());
-	glBindFramebufferEXT(GL_FRAMEBUFFER, 0);
-	CHECK_GL_ERROR();
-
-	// write to file using DevIL
-	ilEnable(IL_FILE_OVERWRITE);
-	ILuint ImageName;
-	ilGenImages(1, &ImageName); // Grab a new image name.
-	ilBindImage(ImageName);
-
-	if (!ilTexImage(width, height, 1, 4, GL_BGRA, GL_UNSIGNED_BYTE, (void*)screenshot_data.data())){
-		ILenum e;
-		std::stringstream error;
-		while ((e = ilGetError()) != IL_NO_ERROR){
-			error << e << ": " << iluErrorString(e) << std::endl;
-		}
-		ilDeleteImages(1, &ImageName); // Delete the image name. 
-		throw std::runtime_error(error.str());
-	}
-
-	ilSave(IL_PNG, filename.c_str());
-	ilDeleteImages(1, &ImageName); // Delete the image name. 
-
-	ilDisable(IL_FILE_OVERWRITE);
-	std::cout << "Saved screenshot!" << std::endl;
 }

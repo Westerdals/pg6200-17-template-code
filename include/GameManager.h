@@ -9,19 +9,13 @@
 #include <glm/glm.hpp>
 
 #include "Timer.h"
-#include "GLUtils/GLUtils.hpp"
 #include "GLUtils/CubeMap.hpp"
 #include "Model.h"
 #include "VirtualTrackball.h"
-#include "ScreenshotFBO.h"
+
 #include "GLUtils/ShadowProgram.h"
-#include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <glm/gtx/transform2.hpp>
-#include <glm/detail/_vectorize.hpp>
-#include <glm/detail/_vectorize.hpp>
-#include <glm/detail/_vectorize.hpp>
-#include "GLUtils/DebugOutput.h"
+
 
 /**
  * This class handles the game logic and display.
@@ -146,8 +140,6 @@ private:
 
 	void zoomIn();
 	void zoomOut();
-	void GameManager::initDebugView();
-	void GameManager::renderDebugView();
 	void renderMeshRecursive(
 		MeshPart& mesh,
 		const std::shared_ptr<Program>& program,
@@ -165,9 +157,6 @@ private:
 							   const mat4& projection_matrix);
 
 	void GameManager::renderCubeMap(const glm::mat4& view, const glm::mat4& projection, const mat4& shadow_matrix);
-//	void GameManager::renderCubeMap(const ::GameManager::POV_entity& view, const mat4& shadow_matrix);
-
-	void GameManager::screenshot();
 
 	SDL_Window* main_window; //< Our window handle
 	SDL_GLContext main_context; //< Our opengl context handle 
@@ -175,8 +164,6 @@ private:
 
 	// vao arrays like this is handy for one "scene"
 	GLuint main_scene_vao[2]; // number of different "collection" of vbo's we have
-	// Different scenes can be structured with different vaos
-	GLuint debugview_vao;
 
 	std::map<std::string, std::shared_ptr<Model>> models;
 	std::map<std::string, std::shared_ptr<GLUtils::Program>> shaders;
@@ -184,21 +171,17 @@ private:
 	std::shared_ptr<GLUtils::CubeMap> diffuse_cubemap;
 	std::shared_ptr<GLUtils::VBO<GL_ARRAY_BUFFER> > cube_vertices, cube_normals;
 
-	// we make the quad vbo without help from Program.hpp
-	// this is just like the code for triangle primitives in lab_01_solution
-	// and that you will find inside Program.hpp now
-	GLuint debugview;
 
 	// FBO screenshot
-	std::shared_ptr<ScreenshotFBO> screenshot_fbo;
+//	std::shared_ptr<FBO> screenshot_fbo;
 
 	float zoom;
 	Timer fps_timer;
 	VirtualTrackball cam_trackball;
 
-	
 
-	POV_entity camera, light, current_POV;
+	POV_entity camera;
+	POV_entity light;
 
 	std::shared_ptr<Model> bunny_model, cube_model;
 	std::shared_ptr<GLUtils::Program> cube_program, debugview_program;

@@ -1,7 +1,7 @@
-#include "ScreenshotFBO.h"
+#include "FBO.h"
 #include "GLUtils/GLUtils.hpp"
 
-ScreenshotFBO::ScreenshotFBO(unsigned int width, unsigned int height) {
+FBO::FBO(unsigned int width, unsigned int height) {
 	this->width = width;
 	this->height = height;
 
@@ -22,10 +22,10 @@ ScreenshotFBO::ScreenshotFBO(unsigned int width, unsigned int height) {
 
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
 
-	glGenFramebuffersEXT(1, &fbo);
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo);
+	glGenFramebuffers(1, &fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 	glDrawBuffer(GL_NONE);
-	glFramebufferTexture2DEXT(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D, texture, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, texture, 0);
 
 	glClear(GL_DEPTH_BUFFER_BIT);
 //	*/
@@ -37,7 +37,7 @@ ScreenshotFBO::ScreenshotFBO(unsigned int width, unsigned int height) {
 	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
 //	*/
-	glBindFramebuffer(GL_FRAMEBUFFER_EXT, 0);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glBindTexture(GL_TEXTURE_2D, 0);
 //  */
 	//Check for completeness
@@ -46,15 +46,15 @@ ScreenshotFBO::ScreenshotFBO(unsigned int width, unsigned int height) {
 }
 
 
-ScreenshotFBO::~ScreenshotFBO()
+FBO::~FBO()
 {
-	glDeleteFramebuffersEXT(1, &fbo);
+	glDeleteFramebuffers(1, &fbo);
 }
 
-void ScreenshotFBO::bind() {
-	glBindFramebufferEXT(GL_FRAMEBUFFER, fbo);
+void FBO::bind() {
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 }
 
-void ScreenshotFBO::unbind() {
-	glBindFramebufferEXT(GL_FRAMEBUFFER, 0);
+void FBO::unbind() {
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
