@@ -219,7 +219,7 @@ void GameManager::setOpenGLStates(){
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
 	glEnable(GL_CULL_FACE);
-	glCullFace(GL_BACK);
+	CHECK_GL_ERRORS();
 	glClearColor(0.0, 0.0, 0.5, 1.0);
 	glViewport(0, 0, window_width, window_height);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -233,7 +233,9 @@ void GameManager::createMatrices(){
 	camera.projection = glm::perspective(fovy / zoom, window_width / (float)window_height, near_plane, far_plane);
 	camera.view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -10.0f));
 
+	
 	light.position = glm::vec3(10, 0, 0);
+	// the aspect ratio is the same as the final viewport, so that the shadow won't be rendered crooked
 	light.projection = glm::perspective(fovy, depth_fbo_width / (float)depth_fbo_height, near_plane, far_plane);
 	light.view = glm::lookAt(light.position, glm::vec3(0), glm::vec3(0.0, 1.0, 0.0));
 
@@ -247,7 +249,7 @@ void GameManager::createSimpleProgram(){
 	shadow_program.reset(new ShadowProgram());
 	shadow_program->init();
 	CHECK_GL_ERROR();
-	
+
 	bunny_program.reset(new BlinnPhongProgram());
 	bunny_program->init();
 	bunny_program->use();
@@ -283,14 +285,15 @@ void GameManager::createVAO(){
 	// Those will be connected to main_scene_vao[BUNNY], since this is the one
 	// that was last bound with glBindVertexArray
 	bunny_model.reset(new Model("models/bunny.obj", false));
-	
+
 	bunny_model->getVertices()->bind();
 	shadow_program->setAttributePointer("position", 3);
 	bunny_program->setAttributePointer("position", 3);
-	
+
 	bunny_model->getNormals()->bind();
 	bunny_program->setAttributePointer("normal", 3);
 	CHECK_GL_ERROR();
+	glBindVertexArray(0);
 
 	// bind cube_program input to corresponding cube data
 	glBindVertexArray(main_scene_vao[CUBE]);
@@ -320,7 +323,7 @@ void GameManager::init_shadowFBO(){
 
 	glGenTextures(1, &depth_texture);
 	glBindTexture(GL_TEXTURE_2D, depth_texture);
-	glTexImage2D(GL_TEXTURE_2D, LoD, GL_DEPTH_COMPONENT, depth_fbo_width, depth_fbo_height, 0, GL_DEPTH_COMPONENT,
+	glTexImage2D(GL_TEXTURE_2D, LoD, GL_DEPTH_COMPONENT32, depth_fbo_width, depth_fbo_height, 0, GL_DEPTH_COMPONENT,
 	             GL_FLOAT,
 	             nullptr);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -372,19 +375,19 @@ void GameManager::render_cubemap_depth(const glm::mat4& view){
 
 void GameManager::render_bunny_depth(MeshPart& mesh,
                                      const std::shared_ptr<Program>& program,
-                                     const mat4& view_projection_matrix,
+									 const mat4& depth_VP_mat,
                                      const mat4& model_matrix){
 
 	const mat4 meshpart_model_matrix = model_matrix * mesh.transform;
-	mat4 light_mvp = view_projection_matrix * meshpart_model_matrix;
+	mat4 light_mvp = depth_VP_mat * meshpart_model_matrix;
+
 	program->use();
-	const auto loc = program->getUniform("model_view_projection");
-	glUniformMatrix4fv(loc, 1, GL_FALSE, value_ptr(light_mvp));
+	glUniformMatrix4fv(program->getUniform("model_view_projection"), 1, GL_FALSE, value_ptr(light_mvp));
 	CHECK_GL_ERRORS();
 	glDrawArrays(GL_TRIANGLES, mesh.first, mesh.count);
 	CHECK_GL_ERRORS();
 	for (int i = 0; i < (int)mesh.children.size(); ++i){
-		render_bunny_depth(mesh.children.at(i), program, view_projection_matrix, meshpart_model_matrix);
+		render_bunny_depth(mesh.children.at(i), program, depth_VP_mat, meshpart_model_matrix);
 	}
 	program->disuse();
 }
@@ -439,17 +442,11 @@ void GameManager::renderMeshRecursive(
 
 	mat4 model_mat_inverse = inverse(meshpart_model_matrix);
 	mat4 model_view_mat_inverse = inverse(view_matrix * meshpart_model_matrix);
-//	glm::vec3 light_pos = glm::mat3(model_mat_inverse) * light_position / model_mat_inverse[3].w;
-		glm::vec3 light_pos = light.position;
-//	glm::vec3 camera_pos = glm::vec3(model_view_mat_inverse[3] / model_view_mat_inverse[3].w);
-		glm::vec3 camera_pos = camera.position;
+	glm::vec3 light_pos = light.position;
+	glm::vec3 camera_pos = camera.position;
 
 	program->use();
 	program->set_MVP_matrix(view_proj_mat * meshpart_model_matrix);
-	//	glUniformMatrix4fv(program->getUniform("shadow_MVP"), 1, 0, glm::value_ptr(shadow_MVP));
-//	glUniformMatrix4fv(program->getUniform("model_mat"), 1, 0, value_ptr(meshpart_model_matrix));
-//	glUniformMatrix4fv(program->getUniform("view_proj_mat"), 1, 0, glm::value_ptr(view_proj_mat));
-//	CHECK_GL_ERROR();
 
 	program->set_light_position(light_pos);
 	program->set_camera_position(camera_pos);
@@ -458,7 +455,8 @@ void GameManager::renderMeshRecursive(
 	glDrawArrays(GL_TRIANGLES, mesh.first, mesh.count);
 	CHECK_GL_ERROR();
 	for (int i = 0; i < (int)mesh.children.size(); ++i)
-		renderMeshRecursive(mesh.children.at(i), program, view_matrix, meshpart_model_matrix, projection_matrix, light_position);
+		renderMeshRecursive(mesh.children.at(i), program, view_matrix, meshpart_model_matrix, projection_matrix,
+		                    light_position);
 	program->disuse();
 }
 
@@ -469,18 +467,11 @@ void GameManager::render(){
 	light.position = glm::mat3(rotation) * light.position;
 	light.view = glm::lookAt(light.position, glm::vec3(0), glm::vec3(0.0, 1.0, 0.0));
 
-	auto dotprod_light_z = glm::dot(glm::vec3(0, 0, -1), glm::normalize(glm::vec3(light.position.x, 0, light.position.z)));
-	if (glm::abs(dotprod_light_z) >= 1 - 10e-6f){
-		//		std::cout << "light z: " << light.position.z << std::endl;
-		std::cout << "light xz dot z axis: " << dotprod_light_z << std::endl;
-	}
 
 	glm::mat4 view = camera.view * cam_trackball.getTransform();
 
-	cube_depthVP = light.projection * light.view;
-	bunny_depthVP = light.projection * light.view;
-
-	glm::mat4 cube_depthBiasVP = scale_bias_matrix * cube_depthVP;
+	depth_VP = light.projection * light.view;
+	glm::mat4 depth_bias_vp = scale_bias_matrix * depth_VP;
 
 
 	///******************* R T T ******************************
@@ -496,25 +487,27 @@ void GameManager::render(){
 	initRenderToShadowFBO();
 
 	// ******** render bunny
-	glCullFace(GL_BACK); // small trick to avoid depth fighting on the bunny itself
+//		glCullFace(GL_BACK); // small trick to avoid depth fighting on the bunny itself
+//	glCullFace(GL_FRONT); // small trick to avoid depth fighting on the bunny itself
 	glBindVertexArray(main_scene_vao[BUNNY]);
-	render_bunny_depth(bunny_model->getMesh(), shadow_program, bunny_depthVP, bunny_model_matrix);
+	render_bunny_depth(bunny_model->getMesh(), shadow_program, depth_VP, bunny_model_matrix);
 	CHECK_GL_ERROR();
 	// ******* render cube
 	// we're not rendering the cube to the shadow map, 
 	// as we're not casting the cube's shadow on anything;
-	glDisable(GL_POLYGON_OFFSET_FILL);
 
 	if (!showShadowMap){
 		///******************* FINAL RENDER PASS ************************************
 		// ******* prepare actual render-to-screen FBO
 		glBindFramebuffer(GL_FRAMEBUFFER, 0); //go back to main framebuffer
+		glDisable(GL_POLYGON_OFFSET_FILL);
 		glViewport(0, 0, window_width, window_height); //blow viewport back up to window size
 		CHECK_GL_ERROR();
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear color + depth
 
 		// ******* render cube with shadows
 		cube_program->use();
+		glCullFace(GL_BACK);
 		// bind the created shadow map 
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, depth_texture);
@@ -523,15 +516,16 @@ void GameManager::render(){
 		CHECK_GL_ERROR();
 		diffuse_cubemap->bindTexture(GL_TEXTURE1);
 		CHECK_GL_ERROR();
-		glCullFace(GL_BACK);
-		renderCubeMap(cube_model_matrix, view, camera.projection, cube_depthBiasVP, light);
+//		glCullFace(GL_BACK);
+		renderCubeMap(cube_model_matrix, view, camera.projection, depth_bias_vp, light);
 		CHECK_GL_ERROR();
 		diffuse_cubemap->unbindTexture();
 
 		// ******* render bunny with blinn-phong
 		glBindVertexArray(main_scene_vao[BUNNY]);
 		glCullFace(GL_FRONT);
-		renderMeshRecursive(bunny_model->getMesh(), bunny_program, view, bunny_model_matrix, camera.projection, light.position);
+		renderMeshRecursive(bunny_model->getMesh(), bunny_program, view, bunny_model_matrix, camera.projection,
+		                    light.position);
 		glBindVertexArray(0);
 		CHECK_GL_ERROR();
 	}
@@ -584,9 +578,6 @@ void GameManager::play(){
 							break;
 						case SDLK_m:
 							showShadowMap = !showShadowMap;
-							break;
-						case SDLK_p:
-							//							screenshot();
 							break;
 						case SDLK_RIGHT:
 							camera.view = glm::translate(camera.view, glm::vec3(-0.1, 0.0, 0.0));

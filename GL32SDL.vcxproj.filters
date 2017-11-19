@@ -85,12 +85,6 @@
     <None Include="shaders\cube_map.frag">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="shaders\fbo.frag">
-      <Filter>Resource Files</Filter>
-    </None>
-    <None Include="shaders\fbo.vert">
-      <Filter>Resource Files</Filter>
-    </None>
     <None Include="shaders\shadow.frag">
       <Filter>Resource Files</Filter>
     </None>

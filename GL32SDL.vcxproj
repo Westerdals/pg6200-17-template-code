@@ -39,8 +39,6 @@
   <ItemGroup>
     <None Include="shaders\bunny_light.frag" />
     <None Include="shaders\bunny_light.vert" />
-    <None Include="shaders\fbo.frag" />
-    <None Include="shaders\fbo.vert" />
     <None Include="shaders\cube_map.frag" />
     <None Include="shaders\cube_map.geom" />
     <None Include="shaders\cube_map.vert" />

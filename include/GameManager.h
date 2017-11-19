@@ -108,8 +108,8 @@ protected:
 	int depth_fbo_width;
 	int depth_fbo_height;
 	glm::mat4 scale_bias_matrix;
-	mat4 cube_depthVP;
-	mat4 bunny_depthVP;
+	mat4 depth_VP;
+//	mat4 bunny_depthVP;
 
 private:
 	struct POV_entity{
