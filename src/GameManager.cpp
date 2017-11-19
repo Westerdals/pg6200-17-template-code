@@ -9,6 +9,9 @@
 #include "GLUtils/DebugOutput.h"
 #include "GLUtils/GLUtils.hpp"
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/detail/_vectorize.hpp>
+#include <glm/detail/_vectorize.hpp>
+#include <glm/detail/_vectorize.hpp>
 
 using std::cerr;
 using std::endl;
@@ -127,8 +130,6 @@ GameManager::GameManager(){
 	far_plane = 30.0f;
 	fovy = 45.0f;
 
-	depth_fbo_width = window_width;
-	depth_fbo_height = window_height;
 }
 
 
@@ -155,7 +156,7 @@ void GameManager::init(){
 	CHECK_GL_ERROR();
 	createVAO();
 	CHECK_GL_ERROR();
-	init_shadowFBO();
+	depth_fbo.reset(new DepthFBO(window_width, window_height));
 	CHECK_GL_ERROR();
 
 }
@@ -236,7 +237,7 @@ void GameManager::createMatrices(){
 	
 	light.position = glm::vec3(10, 0, 0);
 	// the aspect ratio is the same as the final viewport, so that the shadow won't be rendered crooked
-	light.projection = glm::perspective(fovy, depth_fbo_width / (float)depth_fbo_height, near_plane, far_plane);
+	light.projection = glm::perspective(fovy, window_width / (float)window_height, near_plane, far_plane);
 	light.view = glm::lookAt(light.position, glm::vec3(0), glm::vec3(0.0, 1.0, 0.0));
 
 	scale_bias_matrix = glm::scale(glm::translate(mat4(1.0f), glm::vec3(0.5f)), glm::vec3(0.5f));
@@ -249,7 +250,7 @@ void GameManager::createSimpleProgram(){
 	shadow_program.reset(new ShadowProgram());
 	shadow_program->init();
 	CHECK_GL_ERROR();
-
+	/// create final render program for the rabbit
 	bunny_program.reset(new BlinnPhongProgram());
 	bunny_program->init();
 	bunny_program->use();
@@ -306,71 +307,10 @@ void GameManager::createVAO(){
 	cube_program->setAttributePointer("normal", 3);
 	CHECK_GL_ERROR();
 
-	// unnecessary since all BOs are of type GL_ARRAY_BUFFER, 
-	// but just in case we switch to IBOs (i.e. GL_ELEMENT_ARRAY_BUFFER) 
-	// in the future.
 	bunny_model->getVertices()->unbind();
-	cube_vertices->unbind();
-	cube_normals->unbind();
 	CHECK_GL_ERROR();
 
 	glBindVertexArray(0);
-
-}
-
-void GameManager::init_shadowFBO(){
-	int LoD = 0;
-
-	glGenTextures(1, &depth_texture);
-	glBindTexture(GL_TEXTURE_2D, depth_texture);
-	glTexImage2D(GL_TEXTURE_2D, LoD, GL_DEPTH_COMPONENT32, depth_fbo_width, depth_fbo_height, 0, GL_DEPTH_COMPONENT,
-	             GL_FLOAT,
-	             nullptr);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
-
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-
-	// Now the Frame buffer
-	glGenFramebuffers(1, &depth_fbo);
-	glBindFramebuffer(GL_FRAMEBUFFER, depth_fbo);
-	// attach the texture target which will be used once we're done drawing to the FBO
-	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depth_texture, 0);
-	// no color buffer
-	glDrawBuffer(GL_NONE);
-	glReadBuffer(GL_NONE);
-
-	auto fboLoaded = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-	if (fboLoaded != GL_FRAMEBUFFER_COMPLETE){
-		std::cout << "FrameBuffer not loaded correctly" << std::endl;
-	}
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-}
-
-void GameManager::initRenderToShadowFBO(){
-	glViewport(0, 0, depth_fbo_width, depth_fbo_height);
-	CHECK_GL_ERROR();
-	glClearDepth(1.0f);
-	glClear(GL_DEPTH_BUFFER_BIT);
-	glEnable(GL_POLYGON_OFFSET_FILL);
-	// as per official doc: offset applied before the depth test is performed 
-	// and before the value is written into the depth buffer.
-	// Used to avoid depth fighting (also known as "Shadow acne". Yuck.).
-	glPolygonOffset(2.f, 4.f);
-	CHECK_GL_ERROR();
-}
-
-void GameManager::render_cubemap_depth(const glm::mat4& view){
-	mat4 light_mvp = light.projection * view * cube_model_matrix;
-	shadow_program->use();
-	shadow_program->set_MVP_matrix(light_mvp);
-	glDrawArrays(GL_TRIANGLES, 0, 36);
-	shadow_program->disuse();
 }
 
 void GameManager::render_bunny_depth(MeshPart& mesh,
@@ -395,12 +335,6 @@ void GameManager::render_bunny_depth(MeshPart& mesh,
 
 void GameManager::renderCubeMap(const glm::mat4& model_mat, const glm::mat4& view, const glm::mat4& projection,
                                 const glm::mat4& shadow_MVP, const POV_entity& light_POV){
-
-	glBindVertexArray(main_scene_vao[CUBE]);
-	CHECK_GL_ERROR();
-
-
-	//	glm::mat4 model_view_mat = view * model_mat;
 	glm::mat4 view_proj_mat = projection * view;
 
 	glm::mat4 model_mat_inverse = glm::inverse(model_mat);
@@ -423,7 +357,6 @@ void GameManager::renderCubeMap(const glm::mat4& model_mat, const glm::mat4& vie
 	CHECK_GL_ERROR();
 
 	glDrawArrays(GL_TRIANGLES, 0, 36);
-	glBindVertexArray(0);
 	cube_program->disuse();
 	CHECK_GL_ERROR();
 
@@ -480,16 +413,17 @@ void GameManager::render(){
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	}
 	else{
-		glBindFramebuffer(GL_FRAMEBUFFER, depth_fbo);
+//		glBindFramebuffer(GL_FRAMEBUFFER, depth_fbo->getFBO());
+		depth_fbo->bind();
+
 	}
 
 	// ******** prepare shadow FBO + "shrink" viewport to the FBO (texture) size + clear depth
-	initRenderToShadowFBO();
-
+//	initRenderToShadowFBO();
+	depth_fbo->setup();
 	// ******** render bunny
-//		glCullFace(GL_BACK); // small trick to avoid depth fighting on the bunny itself
-//	glCullFace(GL_FRONT); // small trick to avoid depth fighting on the bunny itself
 	glBindVertexArray(main_scene_vao[BUNNY]);
+	// glCullFace(GL_BACK); // <- bunny is inverted, so this removes the front to help 
 	render_bunny_depth(bunny_model->getMesh(), shadow_program, depth_VP, bunny_model_matrix);
 	CHECK_GL_ERROR();
 	// ******* render cube
@@ -499,8 +433,10 @@ void GameManager::render(){
 	if (!showShadowMap){
 		///******************* FINAL RENDER PASS ************************************
 		// ******* prepare actual render-to-screen FBO
-		glBindFramebuffer(GL_FRAMEBUFFER, 0); //go back to main framebuffer
-		glDisable(GL_POLYGON_OFFSET_FILL);
+//		glBindFramebuffer(GL_FRAMEBUFFER, 0); //go back to main framebuffer
+//		glDisable(GL_POLYGON_OFFSET_FILL);
+		depth_fbo->unbind();
+		depth_fbo->tear_down();
 		glViewport(0, 0, window_width, window_height); //blow viewport back up to window size
 		CHECK_GL_ERROR();
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear color + depth
@@ -509,21 +445,25 @@ void GameManager::render(){
 		cube_program->use();
 		glCullFace(GL_BACK);
 		// bind the created shadow map 
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, depth_texture);
+		depth_fbo->bindTexture(0);
 		CHECK_GL_ERROR();
 		glUniform1i(cube_program->getUniform("shadow_map"), 0);
 		CHECK_GL_ERROR();
+		// bind the cube's diffuse textures
 		diffuse_cubemap->bindTexture(GL_TEXTURE1);
 		CHECK_GL_ERROR();
-//		glCullFace(GL_BACK);
+		glBindVertexArray(main_scene_vao[CUBE]);
+		CHECK_GL_ERROR();
 		renderCubeMap(cube_model_matrix, view, camera.projection, depth_bias_vp, light);
 		CHECK_GL_ERROR();
+		depth_fbo->unbindTexture();
 		diffuse_cubemap->unbindTexture();
 
 		// ******* render bunny with blinn-phong
 		glBindVertexArray(main_scene_vao[BUNNY]);
-		glCullFace(GL_FRONT);
+		// For a reason I didn't understand, the bunny is inside-out by default...
+		// Hence culling the "front" faces.
+		glCullFace(GL_FRONT); 
 		renderMeshRecursive(bunny_model->getMesh(), bunny_program, view, bunny_model_matrix, camera.projection,
 		                    light.position);
 		glBindVertexArray(0);

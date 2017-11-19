@@ -16,6 +16,7 @@
 #include "GLUtils/ShadowProgram.h"
 #include <glm/gtc/type_ptr.hpp>
 #include "GLUtils/BlinnPhongProgram.h"
+#include "DepthFBO.h"
 
 
 /**
@@ -86,9 +87,6 @@ protected:
 	 * Creates vertex array objects
 	 */
 	void createVAO();
-	void init_shadowFBO();
-	void initRenderToShadowFBO();
-	void render_cubemap_depth(const mat4& view);
 	
 	static const unsigned int window_width = 800;
 	static const unsigned int window_height = 600;
@@ -99,24 +97,17 @@ protected:
 	float near_plane;
 	float far_plane;
 	float fovy;
-
 	bool showShadowMap;
 
-	int screenshot_number;
-	GLuint depth_texture;
-	GLuint depth_fbo;
-	int depth_fbo_width;
-	int depth_fbo_height;
 	glm::mat4 scale_bias_matrix;
 	mat4 depth_VP;
-//	mat4 bunny_depthVP;
 
 private:
 	struct POV_entity{
 		glm::vec3 position;
 		glm::mat4 projection;
 		glm::mat4 view;
-	};
+	} camera, light;
 
 	enum MeshIndex{
 		BUNNY = 0,
@@ -152,35 +143,26 @@ private:
 	SDL_GLContext main_context; //< Our opengl context handle 
 	RenderMode render_mode_enum = RENDERMODE_FLAT; //< The current method of rendering
 
-	// vao arrays like this is handy for one "scene"
-	GLuint main_scene_vao[2]; // number of different "collection" of vbo's we have
+	// Where the model/mesh data will be stored (1 VAO refers to 1+ VBOs)
+	GLuint main_scene_vao[2]; 
 
-	std::map<std::string, std::shared_ptr<Model>> models;
-//	std::map<std::string, std::shared_ptr<GLUtils::Program>> shaders;
 
+	std::shared_ptr<DepthFBO> depth_fbo;
 	std::shared_ptr<GLUtils::CubeMap> diffuse_cubemap;
 	std::shared_ptr<GLUtils::VBO<GL_ARRAY_BUFFER> > cube_vertices, cube_normals;
-
-
-	// FBO screenshot
-//	std::shared_ptr<FBO> screenshot_fbo;
 
 	float zoom;
 	Timer fps_timer;
 	VirtualTrackball cam_trackball;
 
 
-	POV_entity camera;
-	POV_entity light;
-
 	std::shared_ptr<Model> bunny_model, cube_model;
-	std::shared_ptr<GLUtils::Program> cube_program, debugview_program;
+	std::shared_ptr<GLUtils::Program> cube_program;
 	std::shared_ptr<GLUtils::ShadowProgram> shadow_program;
 	std::shared_ptr<GLUtils::BlinnPhongProgram> bunny_program;
 
 
-	glm::mat4 bunny_model_matrix; // TODO should be in a struct with the bunny_model mesh
-	glm::mat4 cube_model_matrix;
+	glm::mat4 bunny_model_matrix, cube_model_matrix;
 
 };
  

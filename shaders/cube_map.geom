@@ -22,7 +22,6 @@ void main() {
 		light = l[i];
 		normal = n[i];
 		lightSpaceCoords = ex_lightSpaceCoords[i];
-		
 
 		gl_Position =  gl_in[i].gl_Position;
 		EmitVertex();
