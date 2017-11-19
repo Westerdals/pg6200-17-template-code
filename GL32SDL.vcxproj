@@ -13,6 +13,7 @@
   <ItemGroup>
     <ClInclude Include="include\GameException.h" />
     <ClInclude Include="include\GameManager.h" />
+    <ClInclude Include="include\GLUtils\BlinnPhongProgram.h" />
     <ClInclude Include="include\GLUtils\DebugOutput.h" />
     <ClInclude Include="include\GLUtils\GLUtils.hpp" />
     <ClInclude Include="include\GLUtils\Program.hpp" />
@@ -36,6 +37,8 @@
     <ClCompile Include="src\VirtualTrackball.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="shaders\bunny_light.frag" />
+    <None Include="shaders\bunny_light.vert" />
     <None Include="shaders\fbo.frag" />
     <None Include="shaders\fbo.vert" />
     <None Include="shaders\cube_map.frag" />

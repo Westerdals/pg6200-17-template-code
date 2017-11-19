@@ -15,6 +15,7 @@
 
 #include "GLUtils/ShadowProgram.h"
 #include <glm/gtc/type_ptr.hpp>
+#include "GLUtils/BlinnPhongProgram.h"
 
 
 /**
@@ -63,11 +64,6 @@ protected:
 	 */
 	void createOpenGLContext();
 
-	/*
-	*
-	*/
-	void initSDL();
-
 	/**
 	 * Sets states for OpenGL that we want to keep persistent
 	 * throughout the game
@@ -93,12 +89,7 @@ protected:
 	void init_shadowFBO();
 	void initRenderToShadowFBO();
 	void render_cubemap_depth(const mat4& view);
-	void render_bunny_shadow_recursive(MeshPart& mesh,
-							   const std::shared_ptr<Program>& program,
-							   const mat4& view_matrix,
-							   const mat4& model_matrix,
-							   mat4& projection_matrix) const;
-
+	
 	static const unsigned int window_width = 800;
 	static const unsigned int window_height = 600;
 
@@ -109,7 +100,7 @@ protected:
 	float far_plane;
 	float fovy;
 
-	bool showDebugView;
+	bool showShadowMap;
 
 	int screenshot_number;
 	GLuint depth_texture;
@@ -117,8 +108,8 @@ protected:
 	int depth_fbo_width;
 	int depth_fbo_height;
 	glm::mat4 scale_bias_matrix;
-	mat4 cube_depthMVP;
-	mat4 bunny_depthMVP;
+	mat4 cube_depthVP;
+	mat4 bunny_depthVP;
 
 private:
 	struct POV_entity{
@@ -142,21 +133,20 @@ private:
 	void zoomOut();
 	void renderMeshRecursive(
 		MeshPart& mesh,
-		const std::shared_ptr<Program>& program,
+		const std::shared_ptr<GLUtils::BlinnPhongProgram>& program,
 		const mat4& view_matrix,
 		const mat4& model_matrix,
-		const mat4& shadow_matrix,
-		mat4& projection_matrix,
+		const mat4& projection_matrix,
 		glm::vec3 light_position
 	);
 
 	void render_bunny_depth(MeshPart& mesh,
-							   const std::shared_ptr<Program>& program,
-							   const mat4& view_matrix,
-							   const mat4& model_matrix,
-							   const mat4& projection_matrix);
+							const std::shared_ptr<Program>& program,
+							const mat4& view_projection_matrix,
+							const mat4& model_matrix);
 
-	void GameManager::renderCubeMap(const glm::mat4& view, const glm::mat4& projection, const mat4& shadow_matrix);
+	void GameManager::renderCubeMap(const mat4& model, const mat4& view, const mat4& projection, const mat4& shadow_MVP, const POV_entity&
+	                                light);
 
 	SDL_Window* main_window; //< Our window handle
 	SDL_GLContext main_context; //< Our opengl context handle 
@@ -166,7 +156,7 @@ private:
 	GLuint main_scene_vao[2]; // number of different "collection" of vbo's we have
 
 	std::map<std::string, std::shared_ptr<Model>> models;
-	std::map<std::string, std::shared_ptr<GLUtils::Program>> shaders;
+//	std::map<std::string, std::shared_ptr<GLUtils::Program>> shaders;
 
 	std::shared_ptr<GLUtils::CubeMap> diffuse_cubemap;
 	std::shared_ptr<GLUtils::VBO<GL_ARRAY_BUFFER> > cube_vertices, cube_normals;
@@ -186,6 +176,8 @@ private:
 	std::shared_ptr<Model> bunny_model, cube_model;
 	std::shared_ptr<GLUtils::Program> cube_program, debugview_program;
 	std::shared_ptr<GLUtils::ShadowProgram> shadow_program;
+	std::shared_ptr<GLUtils::BlinnPhongProgram> bunny_program;
+
 
 	glm::mat4 bunny_model_matrix; // TODO should be in a struct with the bunny_model mesh
 	glm::mat4 cube_model_matrix;

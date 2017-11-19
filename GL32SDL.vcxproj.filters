@@ -54,6 +54,9 @@
     <ClInclude Include="include\FBO.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\GLUtils\BlinnPhongProgram.h">
+      <Filter>Header Files\GLUtils</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\GameManager.cpp">
@@ -92,6 +95,12 @@
       <Filter>Resource Files</Filter>
     </None>
     <None Include="shaders\shadow.vert">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="shaders\bunny_light.frag">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="shaders\bunny_light.vert">
       <Filter>Resource Files</Filter>
     </None>
   </ItemGroup>

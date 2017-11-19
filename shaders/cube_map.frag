@@ -2,8 +2,7 @@
 
 uniform samplerCube cubemap;
 uniform sampler2DShadow shadow_map;
-//uniform sampler2D shadow_map;
-uniform sampler2D gShadowMap;                                                       
+uniform bool rendering_cube;
 
 uniform vec3 colour;
 
@@ -11,7 +10,6 @@ in vec3 cube_map_coord;
 in vec3 view;
 in vec3 light;
 in vec3 normal;
-
 in vec4 lightSpaceCoords;
 
 void main() {
@@ -20,16 +18,19 @@ void main() {
 	vec3 n = normalize(normal);
 
 	float spec = pow(max(0.f, dot(h, n)), 128.f);
-	vec4 diffuse = texture(cubemap, cube_map_coord) * dot(l, n);
-	
-	float f = 1.0f;
-	float depth = textureProj(shadow_map, lightSpaceCoords);
-	if(depth < (lightSpaceCoords.z / lightSpaceCoords.w))
-	{
-		f = 0.5f;
-	}
-//	gl_FragColor = vec4( f * vec3((diffuse * vec3(colour) + vec3(spec))), 1.0f );
+	vec4 diffuse = vec4( vec3( max( 0.f, dot(l, n) ) ), 1.0f);
 
-	gl_FragColor = vec4(f*vec3(diffuse * colour), 1.f) + vec4(f*vec3(spec), 1.0f);
+	if(rendering_cube){
+		diffuse = texture(cubemap, cube_map_coord) * diffuse;
+	}
+	
+	float visibility = 1.0f; // visibility factor
+	float depth = textureProj(shadow_map, lightSpaceCoords);
+
+	if(depth < ((lightSpaceCoords.z)  / lightSpaceCoords.w)){
+		visibility = 0.5f;
+	}
+
+	gl_FragColor = vec4( visibility * vec3(diffuse * colour + spec), 1.f);
 	
 }

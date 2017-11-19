@@ -20,22 +20,15 @@ namespace GLUtils
 			attachShader(vs_src, GL_VERTEX_SHADER);
 			attachShader(fs_src, GL_FRAGMENT_SHADER);
 
-			// TODO finalize -> link
 			link();
 			MVP_matrix_loc = getUniform("model_view_projection");
-//			Texture_loc = getUniform("shadow_map");
 		}
 
 		void set_MVP_matrix(const glm::mat4& mvp){
 			glUniformMatrix4fv(MVP_matrix_loc, 1, GL_FALSE, glm::value_ptr(mvp));
 		}
 
-//		void set_texture_unit(GLuint textureUnit){
-//			glUniform1i(Texture_loc, textureUnit);
-//		}
-
 	private:
 		GLint MVP_matrix_loc;
-		GLint Texture_loc;
 	};
 }
