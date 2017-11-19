@@ -462,28 +462,6 @@ void GameManager::renderMeshRecursive(
 	program->disuse();
 }
 
-/*
-void GameManager::render_bunny_shadow_recursive(MeshPart& mesh,
-                                                const std::shared_ptr<Program>& program,
-                                                const mat4& view_matrix,
-                                                const mat4& model_matrix,
-                                                mat4& projection_matrix) const{
-
-	const mat4 meshpart_model_matrix = model_matrix * mesh.transform;
-	mat4 light_mvp = projection_matrix * view_matrix * meshpart_model_matrix;
-
-	program->use();
-	const auto loc = program->getUniform("transform");
-	glUniformMatrix4fv(loc, 1, GL_FALSE, value_ptr(light_mvp));
-
-	glDrawArrays(GL_TRIANGLES, mesh.first, mesh.count);
-	for (int i = 0; i < (int)mesh.children.size(); ++i){
-		render_bunny_shadow_recursive(mesh.children.at(i), program, view_matrix, meshpart_model_matrix, projection_matrix);
-	}
-	program->disuse();
-}
-*/
-
 void GameManager::render(){
 	const float elapsed = fps_timer.elapsedAndRestart();
 
@@ -499,13 +477,10 @@ void GameManager::render(){
 
 	glm::mat4 view = camera.view * cam_trackball.getTransform();
 
-	//	cube_depthVP = light.projection * light.view * cube_model_matrix;
-	//	bunny_depthVP = light.projection * light.view * bunny_model_matrix;
 	cube_depthVP = light.projection * light.view;
 	bunny_depthVP = light.projection * light.view;
 
 	glm::mat4 cube_depthBiasVP = scale_bias_matrix * cube_depthVP;
-	glm::mat4 bunny_depthBiasVP = scale_bias_matrix * bunny_depthVP;
 
 
 	///******************* R T T ******************************
@@ -566,15 +541,15 @@ void GameManager::render(){
 
 
 void GameManager::zoomIn(){
-	//	zoom *= 1.1f;
-	zoom += 1e-3f;
+	zoom = min( zoom + 10e-4f, 1.f + .015f);
+	std::cout << "zoom in: " << zoom << std::endl;
 	camera.projection = glm::perspective(fovy / zoom,
 	                                     window_width / (float)window_height, near_plane, far_plane);
 }
 
 void GameManager::zoomOut(){
-	//	zoom = max(zoom*0.9f, 0.5f);
-	zoom = max(zoom*0.9f, 0.5f);
+	zoom = max(zoom - 10e-4f, 1.f - .015f);
+	std::cout << "zoom out: " << zoom << std::endl;
 	camera.projection = glm::perspective(fovy / zoom,
 	                                     window_width / (float)window_height, near_plane, far_plane);
 }
