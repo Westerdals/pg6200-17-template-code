@@ -2,7 +2,6 @@
 
 uniform samplerCube cubemap;
 uniform sampler2DShadow shadow_map;
-uniform bool rendering_cube;
 
 uniform vec3 colour;
 
@@ -20,9 +19,7 @@ void main() {
 	float spec = pow(max(0.f, dot(h, n)), 128.f);
 	vec4 diffuse = vec4( vec3( max( 0.f, dot(l, n) ) ), 1.0f);
 
-	if(rendering_cube){
-		diffuse = texture(cubemap, cube_map_coord) * diffuse;
-	}
+	diffuse = texture(cubemap, cube_map_coord) * diffuse;
 	
 	float visibility = 1.0f; // visibility factor
 	float depth = textureProj(shadow_map, lightSpaceCoords);

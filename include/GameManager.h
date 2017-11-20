@@ -2,7 +2,6 @@
 #define _GAMEMANAGER_H_
 
 #include <memory>
-#include <map>
 
 #include <GL/glew.h>
 #include <SDL.h>
@@ -101,6 +100,7 @@ protected:
 
 	glm::mat4 scale_bias_matrix;
 	mat4 depth_VP;
+	float depth_near_plane, depth_far_plane;
 
 private:
 	struct POV_entity{

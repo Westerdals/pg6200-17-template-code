@@ -17,7 +17,7 @@ void main() {
 	
 	gl_Position = model_view_projection * vec4(position, 1.f);
 
-	ex_view = normalize(-camera_position - position); 
-	ex_light = normalize(-light_position - position);
+	ex_view = normalize(camera_position - position); 
+	ex_light = normalize(light_position - position);
 	ex_normal = normalize(normal);
 }

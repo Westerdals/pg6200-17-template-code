@@ -9,9 +9,6 @@
 #include "GLUtils/DebugOutput.h"
 #include "GLUtils/GLUtils.hpp"
 #include <glm/gtc/matrix_transform.hpp>
-#include <glm/detail/_vectorize.hpp>
-#include <glm/detail/_vectorize.hpp>
-#include <glm/detail/_vectorize.hpp>
 
 using std::cerr;
 using std::endl;
@@ -130,6 +127,9 @@ GameManager::GameManager(){
 	far_plane = 30.0f;
 	fovy = 45.0f;
 
+	depth_near_plane = 0.5f;
+	depth_far_plane = 30.f;
+
 }
 
 
@@ -231,17 +231,19 @@ void GameManager::createMatrices(){
 	bunny_model_matrix = glm::scale(glm::mat4(1.0f), glm::vec3(3));
 	cube_model_matrix = glm::scale(glm::mat4(1.0f), glm::vec3(far_plane * 0.75f));
 
-	camera.projection = glm::perspective(fovy / zoom, window_width / (float)window_height, near_plane, far_plane);
+	camera.projection = glm::perspective(fovy , window_width / (float)window_height, near_plane, far_plane);
 	camera.view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -10.0f));
 
 	
 	light.position = glm::vec3(10, 0, 0);
 	// the aspect ratio is the same as the final viewport, so that the shadow won't be rendered crooked
-	light.projection = glm::perspective(fovy, window_width / (float)window_height, near_plane, far_plane);
+	light.projection = glm::perspective(fovy / zoom, window_width / (float)window_height,depth_near_plane, depth_far_plane);
 	light.view = glm::lookAt(light.position, glm::vec3(0), glm::vec3(0.0, 1.0, 0.0));
 
 	scale_bias_matrix = glm::scale(glm::translate(mat4(1.0f), glm::vec3(0.5f)), glm::vec3(0.5f));
 	debug_mat_content(scale_bias_matrix);
+
+	debug_mat_content(glm::mat4(2.5f));
 }
 
 void GameManager::createSimpleProgram(){
@@ -345,7 +347,6 @@ void GameManager::renderCubeMap(const glm::mat4& model_mat, const glm::mat4& vie
 
 
 	cube_program->use();
-	glUniform1i(cube_program->getUniform("rendering_cube"), 1);
 	glUniform3fv(cube_program->getUniform("light_position"), 1, glm::value_ptr(light_pos));
 	glUniform3fv(cube_program->getUniform("camera_position"), 1, glm::value_ptr(camera_pos));
 
@@ -373,16 +374,11 @@ void GameManager::renderMeshRecursive(
 	const mat4 meshpart_model_matrix = model_matrix * mesh.transform;
 	mat4 view_proj_mat = projection_matrix * view_matrix;
 
-	mat4 model_mat_inverse = inverse(meshpart_model_matrix);
-	mat4 model_view_mat_inverse = inverse(view_matrix * meshpart_model_matrix);
-	glm::vec3 light_pos = light.position;
-	glm::vec3 camera_pos = camera.position;
-
 	program->use();
 	program->set_MVP_matrix(view_proj_mat * meshpart_model_matrix);
 
-	program->set_light_position(light_pos);
-	program->set_camera_position(camera_pos);
+	program->set_light_position(-light.position);	// origin - light pos
+	program->set_camera_position(-camera.position); // origin - cam pos
 	CHECK_GL_ERROR();
 
 	glDrawArrays(GL_TRIANGLES, mesh.first, mesh.count);
@@ -407,34 +403,33 @@ void GameManager::render(){
 	glm::mat4 depth_bias_vp = scale_bias_matrix * depth_VP;
 
 
-	///******************* R T T ******************************
+	///******************* R T T - Shadow map******************************
 	if (showShadowMap){
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	}
 	else{
-//		glBindFramebuffer(GL_FRAMEBUFFER, depth_fbo->getFBO());
 		depth_fbo->bind();
 
 	}
 
 	// ******** prepare shadow FBO + "shrink" viewport to the FBO (texture) size + clear depth
-//	initRenderToShadowFBO();
 	depth_fbo->setup();
+
 	// ******** render bunny
 	glBindVertexArray(main_scene_vao[BUNNY]);
 	// glCullFace(GL_BACK); // <- bunny is inverted, so this removes the front to help 
 	render_bunny_depth(bunny_model->getMesh(), shadow_program, depth_VP, bunny_model_matrix);
 	CHECK_GL_ERROR();
+	
 	// ******* render cube
 	// we're not rendering the cube to the shadow map, 
 	// as we're not casting the cube's shadow on anything;
 
 	if (!showShadowMap){
+
 		///******************* FINAL RENDER PASS ************************************
 		// ******* prepare actual render-to-screen FBO
-//		glBindFramebuffer(GL_FRAMEBUFFER, 0); //go back to main framebuffer
-//		glDisable(GL_POLYGON_OFFSET_FILL);
 		depth_fbo->unbind();
 		depth_fbo->tear_down();
 		glViewport(0, 0, window_width, window_height); //blow viewport back up to window size
@@ -477,15 +472,18 @@ void GameManager::render(){
 void GameManager::zoomIn(){
 	zoom = min( zoom + 10e-4f, 1.f + .015f);
 	std::cout << "zoom in: " << zoom << std::endl;
-	camera.projection = glm::perspective(fovy / zoom,
-	                                     window_width / (float)window_height, near_plane, far_plane);
+//	camera.projection = glm::perspective(fovy / zoom, window_width / (float)window_height, near_plane, far_plane);
+	light.projection = glm::perspective(fovy / zoom, window_width / (float) window_height, depth_near_plane, depth_far_plane);
+
 }
 
 void GameManager::zoomOut(){
-	zoom = max(zoom - 10e-4f, 1.f - .015f);
+//	zoom = max(zoom - 10e-4f, 1.f - .015f);
+	zoom = max(zoom - 10e-4f, -1.f);
 	std::cout << "zoom out: " << zoom << std::endl;
-	camera.projection = glm::perspective(fovy / zoom,
-	                                     window_width / (float)window_height, near_plane, far_plane);
+//	camera.projection = glm::perspective(fovy / zoom, window_width / (float)window_height, near_plane, far_plane);
+	light.projection = glm::perspective(fovy / zoom, window_width / (float) window_height, depth_near_plane, depth_far_plane);
+
 }
 
 void GameManager::play(){

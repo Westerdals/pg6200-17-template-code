@@ -23,9 +23,7 @@ void main() {
 	gl_Position = view_proj_mat * pos;
 
 	v = normalize(camera_position - position); 
-//	v = normalize(position - camera_position); //negating that vector brought back specular reflection
 	l = normalize(light_position - position);
-//	l = normalize(position - light_position );
 	n = normalize(normal);
 
 	cube_tex_coord = position;
